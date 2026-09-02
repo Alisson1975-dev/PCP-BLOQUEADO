@@ -61,7 +61,7 @@
       <!-- SELETOR DE ANO, ABAS E CONFIGURAÇÕES -->
       <div class="flex items-center gap-2 sm:gap-3 flex-wrap">
         
-        <!-- SELETOR DE ANO -->
+        <!-- SELETOR DE ANO (ATÉ 2100) -->
         <div class="flex items-center bg-slate-100 p-1.5 rounded-2xl border border-slate-200">
           <label for="filtro-ano-global" class="text-xs font-semibold text-slate-600 pl-2 pr-1.5 flex items-center gap-1.5">
             <i class="fa-regular fa-calendar text-sky-600"></i>
@@ -69,8 +69,6 @@
           </label>
           <select id="filtro-ano-global" onchange="alterarAnoFiltro(this.value)" class="bg-white border border-slate-200 text-slate-800 text-xs font-bold rounded-xl px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-sky-200 cursor-pointer shadow-xs">
             <option value="2026" selected>2026</option>
-            <option value="2025">2025</option>
-            <option value="2027">2027</option>
             <option value="TODOS">Todos os Anos</option>
           </select>
         </div>
@@ -114,8 +112,12 @@
   <!-- CONTEÚDO PRINCIPAL -->
   <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
 
-    <!-- SECÇÃO MG1 -->
+    <!-- ============================================== -->
+    <!-- SECÇÃO MG1 (GRÁFICOS EM COLUNAS VERTICAIS)     -->
+    <!-- ============================================== -->
     <section id="view-mg1" class="space-y-6">
+      
+      <!-- Cartões de Resumo Rápido -->
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div class="bg-white border border-slate-200 p-4 rounded-2xl shadow-xs">
           <span class="text-xs text-slate-500 font-medium flex items-center gap-1.5">
@@ -145,7 +147,10 @@
         </div>
       </div>
 
+      <!-- GRÁFICOS MG1 (VERTICAL - UM EMBAIXO DO OUTRO) -->
       <div class="flex flex-col space-y-6">
+        
+        <!-- 1. Categoria 1 - Mês -->
         <div class="bg-white border border-slate-200 rounded-3xl p-5 shadow-xs">
           <div class="flex items-center justify-between mb-3 border-b border-slate-100 pb-2.5">
             <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
@@ -154,9 +159,12 @@
             </h3>
             <span class="text-xs font-medium text-slate-400">Volume mensal vertical em toneladas (t)</span>
           </div>
-          <div class="chart-container"><canvas id="chart-mg1-acabado"></canvas></div>
+          <div class="chart-container">
+            <canvas id="chart-mg1-acabado"></canvas>
+          </div>
         </div>
 
+        <!-- 2. Categoria 2 - Mês -->
         <div class="bg-white border border-slate-200 rounded-3xl p-5 shadow-xs">
           <div class="flex items-center justify-between mb-3 border-b border-slate-100 pb-2.5">
             <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
@@ -165,9 +173,12 @@
             </h3>
             <span class="text-xs font-medium text-slate-400">Volume mensal vertical em toneladas (t)</span>
           </div>
-          <div class="chart-container"><canvas id="chart-mg1-semi"></canvas></div>
+          <div class="chart-container">
+            <canvas id="chart-mg1-semi"></canvas>
+          </div>
         </div>
 
+        <!-- 3. Clientes MG1 (Colunas Verticais) -->
         <div class="bg-white border border-slate-200 rounded-3xl p-5 shadow-xs">
           <div class="flex items-center justify-between mb-3 border-b border-slate-100 pb-2.5">
             <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
@@ -176,9 +187,12 @@
             </h3>
             <span class="text-xs font-medium text-slate-400">Distribuição total por cliente em colunas (t)</span>
           </div>
-          <div class="chart-container"><canvas id="chart-mg1-clientes"></canvas></div>
+          <div class="chart-container">
+            <canvas id="chart-mg1-clientes"></canvas>
+          </div>
         </div>
 
+        <!-- 4. Recusados MG1 -->
         <div class="bg-white border border-slate-200 rounded-3xl p-5 shadow-xs">
           <div class="flex items-center justify-between mb-3 border-b border-slate-100 pb-2.5">
             <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
@@ -187,9 +201,12 @@
             </h3>
             <span class="text-xs font-medium text-slate-400">Evolução mensal de materiais recusados</span>
           </div>
-          <div class="chart-container"><canvas id="chart-mg1-recusado"></canvas></div>
+          <div class="chart-container">
+            <canvas id="chart-mg1-recusado"></canvas>
+          </div>
         </div>
 
+        <!-- 5. Geral MG1 -->
         <div class="bg-white border border-slate-200 rounded-3xl p-5 shadow-xs">
           <div class="flex items-center justify-between mb-3 border-b border-slate-100 pb-2.5">
             <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
@@ -198,11 +215,14 @@
             </h3>
             <span class="text-xs font-medium text-slate-400">Consolidado mensal acumulado</span>
           </div>
-          <div class="chart-container"><canvas id="chart-mg1-geral"></canvas></div>
+          <div class="chart-container">
+            <canvas id="chart-mg1-geral"></canvas>
+          </div>
         </div>
+
       </div>
 
-      <!-- EM ANÁLISE MG1 -->
+      <!-- ÁREA: EM ANÁLISE (MG1) -->
       <div class="bg-white border border-slate-200 rounded-3xl p-5 shadow-xs">
         <div class="flex flex-wrap items-center justify-between gap-4 mb-4 pb-3 border-b border-slate-100">
           <div>
@@ -213,10 +233,12 @@
             <p class="text-xs text-slate-500">Materiais aguardando decisão do PCP para libertação ou recusa.</p>
           </div>
           <button onclick="openModal('MG1')" class="bg-sky-600 hover:bg-sky-700 active:scale-95 text-white px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 shadow-sm transition-all">
-            <i class="fa-solid fa-plus"></i> Cadastrar Solicitação
+            <i class="fa-solid fa-plus"></i>
+            Cadastrar Solicitação
           </button>
         </div>
 
+        <!-- Tabela Em Análise MG1 -->
         <div class="overflow-x-auto border border-slate-100 rounded-xl">
           <table class="w-full text-left text-xs text-slate-700">
             <thead class="bg-slate-50 text-slate-500 uppercase font-semibold text-[11px] border-b border-slate-200">
@@ -229,14 +251,21 @@
                 <th class="p-3 text-center">Ações</th>
               </tr>
             </thead>
-            <tbody id="tbody-mg1-analise" class="divide-y divide-slate-100 font-normal"></tbody>
+            <tbody id="tbody-mg1-analise" class="divide-y divide-slate-100 font-normal">
+              <!-- Renderizado dinamicamente -->
+            </tbody>
           </table>
         </div>
       </div>
     </section>
 
-    <!-- SECÇÃO MG4 -->
+
+    <!-- ============================================== -->
+    <!-- SECÇÃO MG4 (GRÁFICOS EM COLUNAS VERTICAIS)     -->
+    <!-- ============================================== -->
     <section id="view-mg4" class="hidden space-y-6">
+      
+      <!-- Cartões de Resumo Rápido -->
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div class="bg-white border border-slate-200 p-4 rounded-2xl shadow-xs">
           <span class="text-xs text-slate-500 font-medium flex items-center gap-1.5">
@@ -266,7 +295,10 @@
         </div>
       </div>
 
+      <!-- GRÁFICOS MG4 (VERTICAL - UM EMBAIXO DO OUTRO) -->
       <div class="flex flex-col space-y-6">
+        
+        <!-- 1. Categoria 1 - Mês -->
         <div class="bg-white border border-slate-200 rounded-3xl p-5 shadow-xs">
           <div class="flex items-center justify-between mb-3 border-b border-slate-100 pb-2.5">
             <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
@@ -275,9 +307,12 @@
             </h3>
             <span class="text-xs font-medium text-slate-400">Volume mensal vertical em toneladas (t)</span>
           </div>
-          <div class="chart-container"><canvas id="chart-mg4-impresso"></canvas></div>
+          <div class="chart-container">
+            <canvas id="chart-mg4-impresso"></canvas>
+          </div>
         </div>
 
+        <!-- 2. Categoria 2 - Mês -->
         <div class="bg-white border border-slate-200 rounded-3xl p-5 shadow-xs">
           <div class="flex items-center justify-between mb-3 border-b border-slate-100 pb-2.5">
             <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
@@ -286,9 +321,12 @@
             </h3>
             <span class="text-xs font-medium text-slate-400">Volume mensal vertical em toneladas (t)</span>
           </div>
-          <div class="chart-container"><canvas id="chart-mg4-rotulos"></canvas></div>
+          <div class="chart-container">
+            <canvas id="chart-mg4-rotulos"></canvas>
+          </div>
         </div>
 
+        <!-- 3. Clientes MG4 (Colunas Verticais) -->
         <div class="bg-white border border-slate-200 rounded-3xl p-5 shadow-xs">
           <div class="flex items-center justify-between mb-3 border-b border-slate-100 pb-2.5">
             <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
@@ -297,9 +335,12 @@
             </h3>
             <span class="text-xs font-medium text-slate-400">Distribuição total por cliente em colunas (t)</span>
           </div>
-          <div class="chart-container"><canvas id="chart-mg4-clientes"></canvas></div>
+          <div class="chart-container">
+            <canvas id="chart-mg4-clientes"></canvas>
+          </div>
         </div>
 
+        <!-- 4. Recusados MG4 -->
         <div class="bg-white border border-slate-200 rounded-3xl p-5 shadow-xs">
           <div class="flex items-center justify-between mb-3 border-b border-slate-100 pb-2.5">
             <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
@@ -308,9 +349,12 @@
             </h3>
             <span class="text-xs font-medium text-slate-400">Evolução mensal de materiais recusados</span>
           </div>
-          <div class="chart-container"><canvas id="chart-mg4-recusado"></canvas></div>
+          <div class="chart-container">
+            <canvas id="chart-mg4-recusado"></canvas>
+          </div>
         </div>
 
+        <!-- 5. Geral MG4 -->
         <div class="bg-white border border-slate-200 rounded-3xl p-5 shadow-xs">
           <div class="flex items-center justify-between mb-3 border-b border-slate-100 pb-2.5">
             <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
@@ -319,11 +363,14 @@
             </h3>
             <span class="text-xs font-medium text-slate-400">Consolidado mensal acumulado</span>
           </div>
-          <div class="chart-container"><canvas id="chart-mg4-geral"></canvas></div>
+          <div class="chart-container">
+            <canvas id="chart-mg4-geral"></canvas>
+          </div>
         </div>
+
       </div>
 
-      <!-- EM ANÁLISE MG4 -->
+      <!-- ÁREA: EM ANÁLISE (MG4) -->
       <div class="bg-white border border-slate-200 rounded-3xl p-5 shadow-xs">
         <div class="flex flex-wrap items-center justify-between gap-4 mb-4 pb-3 border-b border-slate-100">
           <div>
@@ -334,10 +381,12 @@
             <p class="text-xs text-slate-500">Materiais aguardando decisão do PCP para liberação ou recusa.</p>
           </div>
           <button onclick="openModal('MG4')" class="bg-teal-600 hover:bg-teal-700 active:scale-95 text-white px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 shadow-sm transition-all">
-            <i class="fa-solid fa-plus"></i> Cadastrar Solicitação
+            <i class="fa-solid fa-plus"></i>
+            Cadastrar Solicitação
           </button>
         </div>
 
+        <!-- Tabela Em Análise MG4 -->
         <div class="overflow-x-auto border border-slate-100 rounded-xl">
           <table class="w-full text-left text-xs text-slate-700">
             <thead class="bg-slate-50 text-slate-500 uppercase font-semibold text-[11px] border-b border-slate-200">
@@ -350,15 +399,21 @@
                 <th class="p-3 text-center">Ações</th>
               </tr>
             </thead>
-            <tbody id="tbody-mg4-analise" class="divide-y divide-slate-100 font-normal"></tbody>
+            <tbody id="tbody-mg4-analise" class="divide-y divide-slate-100 font-normal">
+              <!-- Renderizado dinamicamente -->
+            </tbody>
           </table>
         </div>
       </div>
     </section>
 
-    <!-- SECÇÃO GERAL -->
+
+    <!-- ============================================== -->
+    <!-- SECÇÃO GERAL (CONSOLIDADO MG1 E MG4)           -->
+    <!-- ============================================== -->
     <section id="view-geral" class="hidden space-y-8">
-      <!-- BLOCO MG1 -->
+      
+      <!-- BLOCO MG1 NA VISÃO GERAL -->
       <div class="bg-white border border-slate-200 rounded-3xl p-6 shadow-xs space-y-6">
         <div class="flex items-center justify-between border-b border-slate-100 pb-3">
           <div class="flex items-center gap-3">
@@ -368,9 +423,11 @@
           <span class="text-xs text-slate-400 font-medium">Visão Executiva PCP</span>
         </div>
 
+        <!-- 1. TABELA NÃO LIBERADOS / RECUSADOS COM MOTIVO (EM CIMA) -->
         <div class="bg-rose-50/40 border border-rose-200/80 rounded-2xl p-4">
           <h3 class="text-xs font-bold text-rose-700 uppercase tracking-wider mb-3 flex items-center gap-2">
-            <i class="fa-solid fa-ban"></i> Não Liberados / Recusados (MG1)
+            <i class="fa-solid fa-ban"></i>
+            Não Liberados / Recusados (MG1)
           </h3>
           <div class="overflow-x-auto bg-white border border-rose-100 rounded-xl">
             <table class="w-full text-left text-xs text-slate-700">
@@ -385,39 +442,53 @@
                   <th class="p-2.5 text-rose-700 font-semibold">Motivo do Bloqueio / Recusa</th>
                 </tr>
               </thead>
-              <tbody id="tbody-geral-mg1-recusados" class="divide-y divide-rose-50"></tbody>
+              <tbody id="tbody-geral-mg1-recusados" class="divide-y divide-rose-50">
+                <!-- Renderizado dinamicamente -->
+              </tbody>
             </table>
           </div>
         </div>
 
+        <!-- 2. GRÁFICOS MG1 (EMBAIXO DO OUTRO - VERTICAL) -->
         <div class="flex flex-col space-y-6">
+          
+          <!-- Gráfico Quantidade Total Liberada -->
           <div class="bg-slate-50 border border-slate-200 p-5 rounded-3xl">
             <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3 flex items-center gap-2">
               <i class="fa-solid fa-chart-simple text-sky-600"></i>
               <span id="display-chart-geral-mg1-total">Quantidade Total Liberada por Mês (kg / t) - MG1</span>
             </h3>
-            <div class="chart-container"><canvas id="chart-geral-mg1-total"></canvas></div>
+            <div class="chart-container">
+              <canvas id="chart-geral-mg1-total"></canvas>
+            </div>
           </div>
 
+          <!-- Gráfico Não Liberados por Mês -->
           <div class="bg-slate-50 border border-slate-200 p-5 rounded-3xl">
             <h3 class="text-xs font-bold text-rose-700 uppercase tracking-wider mb-3 flex items-center gap-2">
               <i class="fa-solid fa-chart-line text-rose-600"></i>
               <span id="display-chart-geral-mg1-recusados">Não Liberados / Recusados por Mês (kg / t) - MG1</span>
             </h3>
-            <div class="chart-container"><canvas id="chart-geral-mg1-recusados-mes"></canvas></div>
+            <div class="chart-container">
+              <canvas id="chart-geral-mg1-recusados-mes"></canvas>
+            </div>
           </div>
 
+          <!-- Gráfico Volume por Clientes (Colunas Verticais) -->
           <div class="bg-slate-50 border border-slate-200 p-5 rounded-3xl">
             <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3 flex items-center gap-2">
               <i class="fa-solid fa-users text-sky-600"></i>
               <span id="display-chart-geral-mg1-clientes">Volume por Clientes (kg / t) - MG1</span>
             </h3>
-            <div class="chart-container"><canvas id="chart-geral-mg1-clientes"></canvas></div>
+            <div class="chart-container">
+              <canvas id="chart-geral-mg1-clientes"></canvas>
+            </div>
           </div>
+
         </div>
       </div>
 
-      <!-- BLOCO MG4 -->
+      <!-- BLOCO MG4 NA VISÃO GERAL -->
       <div class="bg-white border border-slate-200 rounded-3xl p-6 shadow-xs space-y-6">
         <div class="flex items-center justify-between border-b border-slate-100 pb-3">
           <div class="flex items-center gap-3">
@@ -427,9 +498,11 @@
           <span class="text-xs text-slate-400 font-medium">Visão Executiva PCP</span>
         </div>
 
+        <!-- 1. TABELA NÃO LIBERADOS / RECUSADOS COM MOTIVO (EM CIMA) -->
         <div class="bg-rose-50/40 border border-rose-200/80 rounded-2xl p-4">
           <h3 class="text-xs font-bold text-rose-700 uppercase tracking-wider mb-3 flex items-center gap-2">
-            <i class="fa-solid fa-ban"></i> Não Liberados / Recusados (MG4)
+            <i class="fa-solid fa-ban"></i>
+            Não Liberados / Recusados (MG4)
           </h3>
           <div class="overflow-x-auto bg-white border border-rose-100 rounded-xl">
             <table class="w-full text-left text-xs text-slate-700">
@@ -444,41 +517,60 @@
                   <th class="p-2.5 text-rose-700 font-semibold">Motivo do Bloqueio / Recusa</th>
                 </tr>
               </thead>
-              <tbody id="tbody-geral-mg4-recusados" class="divide-y divide-rose-50"></tbody>
+              <tbody id="tbody-geral-mg4-recusados" class="divide-y divide-rose-50">
+                <!-- Renderizado dinamicamente -->
+              </tbody>
             </table>
           </div>
         </div>
 
+        <!-- 2. GRÁFICOS MG4 (EMBAIXO DO OUTRO - VERTICAL) -->
         <div class="flex flex-col space-y-6">
+          
+          <!-- Gráfico Quantidade Total Liberada -->
           <div class="bg-slate-50 border border-slate-200 p-5 rounded-3xl">
             <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3 flex items-center gap-2">
               <i class="fa-solid fa-chart-simple text-teal-600"></i>
               <span id="display-chart-geral-mg4-total">Quantidade Total Liberada por Mês (kg / t) - MG4</span>
             </h3>
-            <div class="chart-container"><canvas id="chart-geral-mg4-total"></canvas></div>
+            <div class="chart-container">
+              <canvas id="chart-geral-mg4-total"></canvas>
+            </div>
           </div>
 
+          <!-- Gráfico Não Liberados por Mês -->
           <div class="bg-slate-50 border border-slate-200 p-5 rounded-3xl">
             <h3 class="text-xs font-bold text-rose-700 uppercase tracking-wider mb-3 flex items-center gap-2">
               <i class="fa-solid fa-chart-line text-rose-600"></i>
               <span id="display-chart-geral-mg4-recusados">Não Liberados / Recusados por Mês (kg / t) - MG4</span>
             </h3>
-            <div class="chart-container"><canvas id="chart-geral-mg4-recusados-mes"></canvas></div>
+            <div class="chart-container">
+              <canvas id="chart-geral-mg4-recusados-mes"></canvas>
+            </div>
           </div>
 
+          <!-- Gráfico Volume por Clientes (Colunas Verticais) -->
           <div class="bg-slate-50 border border-slate-200 p-5 rounded-3xl">
             <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3 flex items-center gap-2">
               <i class="fa-solid fa-users text-teal-600"></i>
               <span id="display-chart-geral-mg4-clientes">Volume por Clientes (kg / t) - MG4</span>
             </h3>
-            <div class="chart-container"><canvas id="chart-geral-mg4-clientes"></canvas></div>
+            <div class="chart-container">
+              <canvas id="chart-geral-mg4-clientes"></canvas>
+            </div>
           </div>
+
         </div>
       </div>
+
     </section>
 
-    <!-- SECÇÃO: NÃO LIBERADOS -->
+    <!-- ============================================== -->
+    <!-- SECÇÃO: NÃO LIBERADOS (APENAS LISTA GERAL)     -->
+    <!-- ============================================== -->
     <section id="view-naoliberados" class="hidden space-y-6">
+      
+      <!-- Cabeçalho da Aba Não Liberados -->
       <div class="bg-white border border-slate-200 rounded-3xl p-6 shadow-xs">
         <div class="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-slate-100">
           <div>
@@ -491,6 +583,7 @@
             <p class="text-xs text-slate-500 mt-1">Lista consolidada de todos os materiais com solicitação recusada ou bloqueada pelo PCP.</p>
           </div>
 
+          <!-- Filtros de Busca Rápida -->
           <div class="flex items-center gap-3 flex-wrap">
             <div class="relative">
               <input type="text" id="filtro-naoliberados-busca" oninput="renderTabelaAbaNaoLiberados()" placeholder="Buscar por cliente, item..." class="bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:bg-white focus:border-rose-400">
@@ -504,6 +597,7 @@
           </div>
         </div>
 
+        <!-- Tabela Exclusiva e Limpa de Todos os Não Liberados -->
         <div class="overflow-x-auto mt-4 border border-rose-100 rounded-2xl">
           <table class="w-full text-left text-xs text-slate-700">
             <thead class="bg-rose-50/70 text-slate-700 uppercase font-semibold text-[11px] border-b border-rose-200/80">
@@ -519,7 +613,9 @@
                 <th class="p-3 text-center">Ações</th>
               </tr>
             </thead>
-            <tbody id="tbody-aba-naoliberados" class="divide-y divide-rose-50 font-normal"></tbody>
+            <tbody id="tbody-aba-naoliberados" class="divide-y divide-rose-50 font-normal">
+              <!-- Renderizado dinamicamente -->
+            </tbody>
           </table>
         </div>
       </div>
@@ -527,596 +623,29 @@
 
   </main>
 
-  <!-- MODAL: CADASTRAR/EDITAR SOLICITAÇÃO -->
-  <div id="modal-solicitacao" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-white border border-slate-200 rounded-3xl max-w-lg w-full p-6 shadow-2xl relative transition-all">
-      <div class="flex items-center justify-between pb-4 border-b border-slate-100">
-        <h3 id="modal-title" class="text-base font-bold text-slate-900">Cadastrar Solicitação</h3>
-        <button onclick="closeModal()" class="w-8 h-8 rounded-xl bg-slate-100 text-slate-500 hover:text-slate-800 flex items-center justify-center">
-          <i class="fa-solid fa-xmark text-sm"></i>
-        </button>
-      </div>
-
-      <form id="form-solicitacao" onsubmit="salvarSolicitacao(event)" class="space-y-4 mt-4">
-        <input type="hidden" id="item-id">
-        <input type="hidden" id="item-unidade">
-
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block text-xs font-semibold text-slate-600 mb-1">Cliente *</label>
-            <input type="text" id="form-cliente" required placeholder="Ex: Nestlé" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-sky-500">
-          </div>
-          <div>
-            <label class="block text-xs font-semibold text-slate-600 mb-1">Código Item *</label>
-            <input type="text" id="form-item" required placeholder="Ex: IT-9082" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-sky-500">
-          </div>
-        </div>
-
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">Descrição do Material *</label>
-          <input type="text" id="form-descricao" required placeholder="Ex: Embalagem Laminada 250g" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-sky-500">
-        </div>
-
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block text-xs font-semibold text-slate-600 mb-1">Quantidade (kg) *</label>
-            <input type="number" step="0.01" id="form-qtd" required placeholder="Ex: 1500" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-sky-500">
-          </div>
-          <div>
-            <label class="block text-xs font-semibold text-slate-600 mb-1">Categoria *</label>
-            <select id="form-categoria" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-sky-500">
-              <!-- Preenchido dinamicamente via JS -->
-            </select>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block text-xs font-semibold text-slate-600 mb-1">Mês *</label>
-            <select id="form-mes" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-sky-500">
-              <option value="Jan">Janeiro</option>
-              <option value="Fev">Fevereiro</option>
-              <option value="Mar">Março</option>
-              <option value="Abr">Abril</option>
-              <option value="Mai">Maio</option>
-              <option value="Jun">Junho</option>
-              <option value="Jul">Julho</option>
-              <option value="Ago">Agosto</option>
-              <option value="Set">Setembro</option>
-              <option value="Out">Outubro</option>
-              <option value="Nov">Novembro</option>
-              <option value="Dez">Dezembro</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-xs font-semibold text-slate-600 mb-1">Ano *</label>
-            <select id="form-ano" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-sky-500">
-              <option value="2025">2025</option>
-              <option value="2026" selected>2026</option>
-              <option value="2027">2027</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="flex justify-end gap-2 pt-4 border-t border-slate-100">
-          <button type="button" onclick="closeModal()" class="px-4 py-2 rounded-xl text-xs font-medium text-slate-600 hover:bg-slate-100">Cancelar</button>
-          <button type="submit" class="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-sky-600 hover:bg-sky-700 shadow-sm">Salvar</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- MODAL: DECISÃO DE DESBLOQUEIO / RECUSA -->
-  <div id="modal-decisao" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-white border border-slate-200 rounded-3xl max-w-md w-full p-6 shadow-2xl relative">
-      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
-        <h3 class="text-base font-bold text-slate-900">Avaliação do Desbloqueio</h3>
-        <button onclick="closeDecisaoModal()" class="w-8 h-8 rounded-xl bg-slate-100 text-slate-500 hover:text-slate-800 flex items-center justify-center">
-          <i class="fa-solid fa-xmark text-sm"></i>
-        </button>
-      </div>
-
-      <div class="mt-4 space-y-3">
-        <p class="text-xs text-slate-600">Selecione o parecer final para esta solicitação de desbloqueio:</p>
-        <input type="hidden" id="decisao-item-id">
-
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">Ação *</label>
-          <select id="decisao-status" onchange="toggleMotivoField(this.value)" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-sky-500">
-            <option value="APROVADO">Aprovar Desbloqueio</option>
-            <option value="RECUSADO">Recusar / Manter Bloqueado</option>
-          </select>
-        </div>
-
-        <div id="campo-motivo" class="hidden">
-          <label class="block text-xs font-semibold text-slate-600 mb-1">Motivo do Bloqueio / Recusa *</label>
-          <textarea id="decisao-motivo" rows="3" placeholder="Informe a justificativa..." class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-rose-400"></textarea>
-        </div>
-
-        <div class="flex justify-end gap-2 pt-3 border-t border-slate-100">
-          <button onclick="closeDecisaoModal()" class="px-4 py-2 rounded-xl text-xs font-medium text-slate-600 hover:bg-slate-100">Cancelar</button>
-          <button onclick="confirmarDecisao()" class="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-sky-600 hover:bg-sky-700 shadow-sm">Confirmar</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- MODAL: CONFIGURAÇÕES -->
-  <div id="modal-config" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-white border border-slate-200 rounded-3xl max-w-md w-full p-6 shadow-2xl relative">
-      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
-        <h3 class="text-base font-bold text-slate-900">Personalizar Títulos</h3>
-        <button onclick="closeConfigModal()" class="w-8 h-8 rounded-xl bg-slate-100 text-slate-500 hover:text-slate-800 flex items-center justify-center">
-          <i class="fa-solid fa-xmark text-sm"></i>
-        </button>
-      </div>
-
-      <div class="mt-4 space-y-3">
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">Título do Aplicação</label>
-          <input type="text" id="config-app-title" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-sky-500">
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">Subtítulo</label>
-          <input type="text" id="config-app-subtitle" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-sky-500">
-        </div>
-
-        <div class="flex justify-end gap-2 pt-3 border-t border-slate-100">
-          <button onclick="closeConfigModal()" class="px-4 py-2 rounded-xl text-xs font-medium text-slate-600 hover:bg-slate-100">Cancelar</button>
-          <button onclick="salvarConfiguracoes()" class="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-sky-600 hover:bg-sky-700 shadow-sm">Salvar</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- JAVASCRIPT PRINCIPAL -->
-  <script>
-    // ESTADO DA APLICAÇÃO
-    const MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-    let anoAtual = '2026';
-    let charts = {};
-
-    let dados = [
-      { id: 1, unidade: 'MG1', cliente: 'Nestlé', item: 'IT-101', descricao: 'Embalagem Biscoito', qtd: 2500, categoria: 'Produto Acabado', status: 'ANALISE', mes: 'Jan', ano: '2026', motivo: '' },
-      { id: 2, unidade: 'MG1', cliente: 'Danone', item: 'IT-102', descricao: 'Filme Multicamada', qtd: 4100, categoria: 'Semiacabado', status: 'APROVADO', mes: 'Jan', ano: '2026', motivo: '' },
-      { id: 3, unidade: 'MG1', cliente: 'Lactalis', item: 'IT-103', descricao: 'Rótulo Leite 1L', qtd: 1200, categoria: 'Produto Acabado', status: 'RECUSADO', mes: 'Fev', ano: '2026', motivo: 'Fora da especificação de tração' },
-      { id: 4, unidade: 'MG4', cliente: 'Ambev', item: 'IT-401', descricao: 'Rótulo Cerveja', qtd: 5000, categoria: 'Rótulos', status: 'ANALISE', mes: 'Jan', ano: '2026', motivo: '' },
-      { id: 5, unidade: 'MG4', cliente: 'Heineken', item: 'IT-402', descricao: 'Filme Impresso', qtd: 3200, categoria: 'Impresso', status: 'APROVADO', mes: 'Fev', ano: '2026', motivo: '' },
-      { id: 6, unidade: 'MG4', cliente: 'Coca-Cola', item: 'IT-403', descricao: 'Rótulo PET 2L', qtd: 1800, categoria: 'Rótulos', status: 'RECUSADO', mes: 'Fev', ano: '2026', motivo: 'Problema de tonalidade de cor' }
-    ];
-
-    // INICIALIZAÇÃO
-    window.addEventListener('DOMContentLoaded', () => {
-      initCharts();
-      renderTudo();
-    });
-
-    function switchTab(tab) {
-      ['mg1', 'mg4', 'geral', 'naoliberados'].forEach(t => {
-        const sec = document.getElementById(`view-${t}`);
-        const btn = document.getElementById(`tab-${t}`);
-        if (sec && btn) {
-          if (t === tab) {
-            sec.classList.remove('hidden');
-            btn.className = `tab-btn flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all duration-200 text-white ${t === 'mg4' ? 'bg-teal-600' : t === 'naoliberados' ? 'bg-rose-600' : 'bg-sky-600'} shadow-sm`;
-          } else {
-            sec.classList.add('hidden');
-            btn.className = 'tab-btn flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all duration-200 text-slate-600 hover:text-slate-900 hover:bg-slate-200/60';
-          }
-        }
-      });
-      renderTudo();
-    }
-
-    function alterarAnoFiltro(ano) {
-      anoAtual = ano;
-      renderTudo();
-    }
-
-    function showToast(msg) {
-      const toast = document.getElementById('toast');
-      toast.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-500"></i> <span>${msg}</span>`;
-      toast.classList.remove('translate-y-20', 'opacity-0', 'pointer-events-none');
-      setTimeout(() => {
-        toast.classList.add('translate-y-20', 'opacity-0', 'pointer-events-none');
-      }, 3000);
-    }
-
-    // MODAIS DE SOLICITAÇÃO
-    function openModal(unidade, id = null) {
-      const form = document.getElementById('form-solicitacao');
-      form.reset();
-      document.getElementById('item-id').value = id || '';
-      document.getElementById('item-unidade').value = unidade;
-
-      const catSelect = document.getElementById('form-categoria');
-      if (unidade === 'MG1') {
-        catSelect.innerHTML = `<option value="Produto Acabado">Produto Acabado</option><option value="Semiacabado">Semiacabado</option>`;
-      } else {
-        catSelect.innerHTML = `<option value="Impresso">Impresso</option><option value="Rótulos">Rótulos</option>`;
-      }
-
-      if (id) {
-        const item = dados.find(d => d.id === id);
-        if (item) {
-          document.getElementById('modal-title').innerText = 'Editar Solicitação';
-          document.getElementById('form-cliente').value = item.cliente;
-          document.getElementById('form-item').value = item.item;
-          document.getElementById('form-descricao').value = item.descricao;
-          document.getElementById('form-qtd').value = item.qtd;
-          catSelect.value = item.categoria;
-          document.getElementById('form-mes').value = item.mes;
-          document.getElementById('form-ano').value = item.ano;
-        }
-      } else {
-        document.getElementById('modal-title').innerText = `Cadastrar Solicitação (${unidade})`;
-      }
-
-      document.getElementById('modal-solicitacao').classList.remove('hidden');
-    }
-
-    function closeModal() {
-      document.getElementById('modal-solicitacao').classList.add('hidden');
-    }
-
-    function salvarSolicitacao(e) {
-      e.preventDefault();
-      const id = document.getElementById('item-id').value;
-      const unidade = document.getElementById('item-unidade').value;
-
-      const novoItem = {
-        id: id ? parseInt(id) : Date.now(),
-        unidade: unidade,
-        cliente: document.getElementById('form-cliente').value.trim(),
-        item: document.getElementById('form-item').value.trim(),
-        descricao: document.getElementById('form-descricao').value.trim(),
-        qtd: parseFloat(document.getElementById('form-qtd').value) || 0,
-        categoria: document.getElementById('form-categoria').value,
-        status: 'ANALISE',
-        mes: document.getElementById('form-mes').value,
-        ano: document.getElementById('form-ano').value,
-        motivo: ''
-      };
-
-      if (id) {
-        const index = dados.findIndex(d => d.id === parseInt(id));
-        if (index !== -1) dados[index] = { ...dados[index], ...novoItem };
-      } else {
-        dados.push(novoItem);
-      }
-
-      closeModal();
-      showToast('Solicitação salva com sucesso!');
-      renderTudo();
-    }
-
-    function deletarSolicitacao(id) {
-      if (confirm('Deseja realmente remover esta solicitação?')) {
-        dados = dados.filter(d => d.id !== id);
-        showToast('Item removido com sucesso.');
-        renderTudo();
-      }
-    }
-
-    // MODAL DECISÃO DE DESBLOQUEIO
-    function openDecisaoModal(id) {
-      document.getElementById('decisao-item-id').value = id;
-      document.getElementById('decisao-status').value = 'APROVADO';
-      document.getElementById('decisao-motivo').value = '';
-      toggleMotivoField('APROVADO');
-      document.getElementById('modal-decisao').classList.remove('hidden');
-    }
-
-    function closeDecisaoModal() {
-      document.getElementById('modal-decisao').classList.add('hidden');
-    }
-
-    function toggleMotivoField(val) {
-      const campo = document.getElementById('campo-motivo');
-      if (val === 'RECUSADO') {
-        campo.classList.remove('hidden');
-      } else {
-        campo.classList.add('hidden');
-      }
-    }
-
-    function confirmarDecisao() {
-      const id = parseInt(document.getElementById('decisao-item-id').value);
-      const status = document.getElementById('decisao-status').value;
-      const motivo = document.getElementById('decisao-motivo').value.trim();
-
-      if (status === 'RECUSADO' && !motivo) {
-        alert('Por favor, descreva o motivo da recusa.');
-        return;
-      }
-
-      const item = dados.find(d => d.id === id);
-      if (item) {
-        item.status = status;
-        item.motivo = status === 'RECUSADO' ? motivo : '';
-      }
-
-      closeDecisaoModal();
-      showToast('Parecer gravado com sucesso!');
-      renderTudo();
-    }
-
-    // MODAL CONFIG
-    function openConfigModal() {
-      document.getElementById('config-app-title').value = document.getElementById('display-app-title').innerText;
-      document.getElementById('config-app-subtitle').value = document.getElementById('display-app-subtitle').innerText;
-      document.getElementById('modal-config').classList.remove('hidden');
-    }
-
-    function closeConfigModal() {
-      document.getElementById('modal-config').classList.add('hidden');
-    }
-
-    function salvarConfiguracoes() {
-      document.getElementById('display-app-title').innerText = document.getElementById('config-app-title').value;
-      document.getElementById('display-app-subtitle').innerText = document.getElementById('config-app-subtitle').value;
-      closeConfigModal();
-      showToast('Configurações atualizadas!');
-    }
-
-    // REDERIZAÇÃO GERAL E TABELAS
-    function renderTudo() {
-      const dadosFiltrados = anoAtual === 'TODOS' ? dados : dados.filter(d => d.ano === anoAtual);
-
-      // Badges
-      const countMg1 = dadosFiltrados.filter(d => d.unidade === 'MG1' && d.status === 'ANALISE').length;
-      const countMg4 = dadosFiltrados.filter(d => d.unidade === 'MG4' && d.status === 'ANALISE').length;
-      const countNaoLib = dadosFiltrados.filter(d => d.status === 'RECUSADO').length;
-
-      document.getElementById('badge-mg1').innerText = countMg1;
-      document.getElementById('badge-mg4').innerText = countMg4;
-      document.getElementById('badge-naoliberados').innerText = countNaoLib;
-
-      renderUnidade('MG1', dadosFiltrados);
-      renderUnidade('MG4', dadosFiltrados);
-      renderTabelaAbaNaoLiberados();
-      updateCharts(dadosFiltrados);
-    }
-
-    function renderUnidade(unidade, dataset) {
-      const prefix = unidade.toLowerCase();
-      const items = dataset.filter(d => d.unidade === unidade);
-
-      const cat1Name = unidade === 'MG1' ? 'Produto Acabado' : 'Impresso';
-      const cat2Name = unidade === 'MG1' ? 'Semiacabado' : 'Rótulos';
-
-      const sumCat1 = items.filter(d => d.categoria === cat1Name && d.status === 'APROVADO').reduce((a, b) => a + b.qtd, 0);
-      const sumCat2 = items.filter(d => d.categoria === cat2Name && d.status === 'APROVADO').reduce((a, b) => a + b.qtd, 0);
-      const sumRecusado = items.filter(d => d.status === 'RECUSADO').reduce((a, b) => a + b.qtd, 0);
-      const sumTotal = sumCat1 + sumCat2;
-
-      const formatKg = (val) => `${val.toLocaleString('pt-PT')} kg <span class="text-xs font-normal text-slate-500">(${(val/1000).toFixed(2)} t)</span>`;
-
-      if (unidade === 'MG1') {
-        document.getElementById('kpi-mg1-acabado').innerHTML = formatKg(sumCat1);
-        document.getElementById('kpi-mg1-semi').innerHTML = formatKg(sumCat2);
-        document.getElementById('kpi-mg1-recusado').innerHTML = formatKg(sumRecusado);
-        document.getElementById('kpi-mg1-total').innerHTML = formatKg(sumTotal);
-      } else {
-        document.getElementById('kpi-mg4-impresso').innerHTML = formatKg(sumCat1);
-        document.getElementById('kpi-mg4-rotulos').innerHTML = formatKg(sumCat2);
-        document.getElementById('kpi-mg4-recusado').innerHTML = formatKg(sumRecusado);
-        document.getElementById('kpi-mg4-total').innerHTML = formatKg(sumTotal);
-      }
-
-      // Tabela Análise
-      const analiseItems = items.filter(d => d.status === 'ANALISE');
-      const tbodyAnalise = document.getElementById(`tbody-${prefix}-analise`);
-      tbodyAnalise.innerHTML = analiseItems.length === 0 ? 
-        `<tr><td colspan="6" class="p-4 text-center text-slate-400">Nenhuma solicitação em análise no momento.</td></tr>` :
-        analiseItems.map(item => `
-          <tr class="hover:bg-slate-50/80 transition-colors">
-            <td class="p-3 font-semibold text-slate-800">${item.cliente}</td>
-            <td class="p-3"><span class="px-2 py-0.5 rounded bg-slate-100 border border-slate-200 font-mono text-[11px]">${item.item}</span></td>
-            <td class="p-3">${item.descricao}</td>
-            <td class="p-3 text-right font-medium">${item.qtd.toLocaleString('pt-PT')} kg <span class="text-slate-400 text-[10px]">(${(item.qtd/1000).toFixed(2)} t)</span></td>
-            <td class="p-3"><span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">${item.categoria}</span></td>
-            <td class="p-3 text-center">
-              <div class="flex items-center justify-center gap-1.5">
-                <button onclick="openDecisaoModal(${item.id})" title="Avaliar Desbloqueio" class="p-1.5 rounded-lg bg-sky-50 text-sky-600 hover:bg-sky-100"><i class="fa-solid fa-check-to-slot"></i></button>
-                <button onclick="openModal('${unidade}', ${item.id})" title="Editar" class="p-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200"><i class="fa-solid fa-pen-to-square"></i></button>
-                <button onclick="deletarSolicitacao(${item.id})" title="Excluir" class="p-1.5 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100"><i class="fa-solid fa-trash"></i></button>
-              </div>
-            </td>
-          </tr>
-        `).join('');
-
-      // Tabela Recusados (Aba Geral)
-      const recusadosItems = items.filter(d => d.status === 'RECUSADO');
-      const tbodyRecusados = document.getElementById(`tbody-geral-${prefix}-recusados`);
-      tbodyRecusados.innerHTML = recusadosItems.length === 0 ? 
-        `<tr><td colspan="7" class="p-3 text-center text-slate-400">Nenhum material recusado ou não liberado.</td></tr>` :
-        recusadosItems.map(item => `
-          <tr class="hover:bg-rose-50/30 transition-colors">
-            <td class="p-2.5 font-semibold text-slate-800">${item.cliente}</td>
-            <td class="p-2.5"><span class="px-1.5 py-0.5 rounded bg-slate-100 font-mono text-[10px]">${item.item}</span></td>
-            <td class="p-2.5">${item.descricao}</td>
-            <td class="p-2.5 text-right font-medium">${item.qtd.toLocaleString('pt-PT')} kg</td>
-            <td class="p-2.5">${item.categoria}</td>
-            <td class="p-2.5">${item.mes}/${item.ano}</td>
-            <td class="p-2.5 text-rose-700 italic">${item.motivo || 'Motivo não especificado'}</td>
-          </tr>
-        `).join('');
-    }
-
-    function renderTabelaAbaNaoLiberados() {
-      const busca = document.getElementById('filtro-naoliberados-busca').value.toLowerCase();
-      const unidadeFiltro = document.getElementById('filtro-naoliberados-unidade').value;
-
-      let dataset = anoAtual === 'TODOS' ? dados : dados.filter(d => d.ano === anoAtual);
-      dataset = dataset.filter(d => d.status === 'RECUSADO');
-
-      if (unidadeFiltro !== 'TODAS') {
-        dataset = dataset.filter(d => d.unidade === unidadeFiltro);
-      }
-
-      if (busca) {
-        dataset = dataset.filter(d => d.cliente.toLowerCase().includes(busca) || d.item.toLowerCase().includes(busca) || d.descricao.toLowerCase().includes(busca));
-      }
-
-      const tbody = document.getElementById('tbody-aba-naoliberados');
-      tbody.innerHTML = dataset.length === 0 ? 
-        `<tr><td colspan="9" class="p-6 text-center text-slate-400">Nenhum material não liberado encontrado com os filtros selecionados.</td></tr>` :
-        dataset.map(item => `
-          <tr class="hover:bg-rose-50/40 transition-colors">
-            <td class="p-3"><span class="px-2 py-0.5 rounded-md text-[10px] font-bold ${item.unidade === 'MG1' ? 'bg-sky-100 text-sky-800' : 'bg-teal-100 text-teal-800'}">${item.unidade}</span></td>
-            <td class="p-3 font-semibold text-slate-800">${item.cliente}</td>
-            <td class="p-3"><span class="px-2 py-0.5 rounded bg-slate-100 border border-slate-200 font-mono text-[11px]">${item.item}</span></td>
-            <td class="p-3">${item.descricao}</td>
-            <td class="p-3 text-right font-medium">${item.qtd.toLocaleString('pt-PT')} kg <span class="text-slate-400 text-[10px]">(${(item.qtd/1000).toFixed(2)} t)</span></td>
-            <td class="p-3">${item.categoria}</td>
-            <td class="p-3 font-medium text-slate-600">${item.mes}/${item.ano}</td>
-            <td class="p-3 text-rose-700 italic">${item.motivo || 'Sem justificativa'}</td>
-            <td class="p-3 text-center">
-              <button onclick="openDecisaoModal(${item.id})" title="Reavaliar Status" class="p-1.5 rounded-lg bg-white border border-slate-200 text-slate-600 hover:text-sky-600 hover:border-sky-300 shadow-xs"><i class="fa-solid fa-arrows-rotate"></i></button>
-            </td>
-          </tr>
-        `).join('');
-    }
-
-    // CHART.JS SETUP E ATUALIZAÇÕES
-    function createChartConfig(type, label, color) {
-      return {
-        type: type,
-        data: {
-          labels: MESES,
-          datasets: [{
-            label: label,
-            data: Array(12).fill(0),
-            backgroundColor: color,
-            borderColor: color,
-            borderRadius: 6,
-            borderWidth: 1
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { display: false },
-            tooltip: {
-              callbacks: {
-                label: (ctx) => ` ${ctx.raw.toFixed(2)} t (${(ctx.raw * 1000).toLocaleString('pt-PT')} kg)`
-              }
-            }
-          },
-          scales: {
-            y: {
-              beginAtZero: true,
-              grid: { color: '#f1f5f9' },
-              ticks: { font: { size: 10 } }
-            },
-            x: {
-              grid: { display: false },
-              ticks: { font: { size: 10 } }
-            }
-          }
-        }
-      };
-    }
-
-    function initCharts() {
-      const chartIds = [
-        { id: 'chart-mg1-acabado', type: 'bar', label: 'Produto Acabado (t)', color: '#0284c7' },
-        { id: 'chart-mg1-semi', type: 'bar', label: 'Semiacabado (t)', color: '#6366f1' },
-        { id: 'chart-mg1-clientes', type: 'bar', label: 'Clientes (t)', color: '#f59e0b' },
-        { id: 'chart-mg1-recusado', type: 'line', label: 'Recusados (t)', color: '#f43f5e' },
-        { id: 'chart-mg1-geral', type: 'bar', label: 'Geral (t)', color: '#10b981' },
-        
-        { id: 'chart-mg4-impresso', type: 'bar', label: 'Impresso (t)', color: '#a855f7' },
-        { id: 'chart-mg4-rotulos', type: 'bar', label: 'Rótulos (t)', color: '#14b8a6' },
-        { id: 'chart-mg4-clientes', type: 'bar', label: 'Clientes (t)', color: '#f59e0b' },
-        { id: 'chart-mg4-recusado', type: 'line', label: 'Recusados (t)', color: '#f43f5e' },
-        { id: 'chart-mg4-geral', type: 'bar', label: 'Geral (t)', color: '#10b981' },
-
-        { id: 'chart-geral-mg1-total', type: 'bar', label: 'Total Liberado (t)', color: '#0284c7' },
-        { id: 'chart-geral-mg1-recusados-mes', type: 'line', label: 'Recusados (t)', color: '#f43f5e' },
-        { id: 'chart-geral-mg1-clientes', type: 'bar', label: 'Clientes (t)', color: '#0284c7' },
-
-        { id: 'chart-geral-mg4-total', type: 'bar', label: 'Total Liberado (t)', color: '#14b8a6' },
-        { id: 'chart-geral-mg4-recusados-mes', type: 'line', label: 'Recusados (t)', color: '#f43f5e' },
-        { id: 'chart-geral-mg4-clientes', type: 'bar', label: 'Clientes (t)', color: '#14b8a6' }
-      ];
-
-      chartIds.forEach(c => {
-        const el = document.getElementById(c.id);
-        if (el) {
-          charts[c.id] = new Chart(el, createChartConfig(c.type, c.label, c.color));
-        }
-      });
-    }
-
-    function updateCharts(dataset) {
-      const getMonthlyData = (unidade, catName, status = 'APROVADO') => {
-        return MESES.map(mes => {
-          const filtered = dataset.filter(d => 
-            d.unidade === unidade && 
-            d.mes === mes && 
-            (status ? d.status === status : true) &&
-            (catName ? d.categoria === catName : true)
-          );
-          return filtered.reduce((a, b) => a + b.qtd, 0) / 1000;
-        });
-      };
-
-      const getClientData = (unidade) => {
-        const clients = {};
-        dataset.filter(d => d.unidade === unidade && d.status === 'APROVADO').forEach(d => {
-          clients[d.cliente] = (clients[d.cliente] || 0) + (d.qtd / 1000);
-        });
-        return {
-          labels: Object.keys(clients).length ? Object.keys(clients) : ['Nenhum'],
-          values: Object.keys(clients).length ? Object.values(clients) : [0]
-        };
-      };
-
-      // Atualizações MG1
-      if (charts['chart-mg1-acabado']) charts['chart-mg1-acabado'].data.datasets[0].data = getMonthlyData('MG1', 'Produto Acabado');
-      if (charts['chart-mg1-semi']) charts['chart-mg1-semi'].data.datasets[0].data = getMonthlyData('MG1', 'Semiacabado');
-      if (charts['chart-mg1-recusado']) charts['chart-mg1-recusado'].data.datasets[0].data = getMonthlyData('MG1', null, 'RECUSADO');
-      if (charts['chart-mg1-geral']) charts['chart-mg1-geral'].data.datasets[0].data = getMonthlyData('MG1', null, 'APROVADO');
-      
-      const clientMg1 = getClientData('MG1');
-      if (charts['chart-mg1-clientes']) {
-        charts['chart-mg1-clientes'].data.labels = clientMg1.labels;
-        charts['chart-mg1-clientes'].data.datasets[0].data = clientMg1.values;
-      }
-
-      // Atualizações MG4
-      if (charts['chart-mg4-impresso']) charts['chart-mg4-impresso'].data.datasets[0].data = getMonthlyData('MG4', 'Impresso');
-      if (charts['chart-mg4-rotulos']) charts['chart-mg4-rotulos'].data.datasets[0].data = getMonthlyData('MG4', 'Rótulos');
-      if (charts['chart-mg4-recusado']) charts['chart-mg4-recusado'].data.datasets[0].data = getMonthlyData('MG4', null, 'RECUSADO');
-      if (charts['chart-mg4-geral']) charts['chart-mg4-geral'].data.datasets[0].data = getMonthlyData('MG4', null, 'APROVADO');
-
-      const clientMg4 = getClientData('MG4');
-      if (charts['chart-mg4-clientes']) {
-        charts['chart-mg4-clientes'].data.labels = clientMg4.labels;
-        charts['chart-mg4-clientes'].data.datasets[0].data = clientMg4.values;
-      }
-
-      // Visão Geral MG1
-      if (charts['chart-geral-mg1-total']) charts['chart-geral-mg1-total'].data.datasets[0].data = getMonthlyData('MG1', null, 'APROVADO');
-      if (charts['chart-geral-mg1-recusados-mes']) charts['chart-geral-mg1-recusados-mes'].data.datasets[0].data = getMonthlyData('MG1', null, 'RECUSADO');
-      if (charts['chart-geral-mg1-clientes']) {
-        charts['chart-geral-mg1-clientes'].data.labels = clientMg1.labels;
-        charts['chart-geral-mg1-clientes'].data.datasets[0].data = clientMg1.values;
-      }
-
-      // Visão Geral MG4
-      if (charts['chart-geral-mg4-total']) charts['chart-geral-mg4-total'].data.datasets[0].data = getMonthlyData('MG4', null, 'APROVADO');
-      if (charts['chart-geral-mg4-recusados-mes']) charts['chart-geral-mg4-recusados-mes'].data.datasets[0].data = getMonthlyData('MG4', null, 'RECUSADO');
-      if (charts['chart-geral-mg4-clientes']) {
-        charts['chart-geral-mg4-clientes'].data.labels = clientMg4.labels;
-        charts['chart-geral-mg4-clientes'].data.datasets[0].data = clientMg4.values;
-      }
-
-      Object.values(charts).forEach(chart => chart.update());
-    }
+  <!-- FIREBASE SDK & INICIALIZAÇÃO -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    // Configuração do Firebase com a sua chave
+    const firebaseConfig = {
+      apiKey: "AIzaSyD-YOUR_KEY_HERE",
+      authDomain: "pcp-bloqueado.firebaseapp.com",
+      projectId: "pcp-bloqueado",
+      storageBucket: "pcp-bloqueado.appspot.com",
+      messagingSenderId: "123456789",
+      appId: "1:123456789:web:abcdef123456"
+    };
+
+    // Inicializa o Firebase
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // Torna as instâncias acessíveis globalmente
+    window.db = db;
+    window.firestoreTools = { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, onSnapshot };
   </script>
+
 </body>
 </html>
