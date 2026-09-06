@@ -1,651 +1,944 @@
 <!DOCTYPE html>
-<html lang="pt-PT">
+<html lang="pt-BR" class="h-full w-full">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PCP - Gestão de Bloqueio</title>
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Chart.js -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- FontAwesome Ícones -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            brand: {
-              50: '#f0f9ff',
-              100: '#e0f2fe',
-              500: '#0284c7',
-              600: '#0369a1',
-              700: '#075985',
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PCP - Solicitação de Liberação</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- html2pdf for robust PDF generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, onSnapshot, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+        window.db = db;
+        window.auth = auth;
+        window.appId = appId;
+        window.colRef = null;
+        window.onSnapshot = onSnapshot;
+        window.doc = doc;
+        window.setDoc = setDoc;
+
+        async function initFirebase() {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+                
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        window.currentUser = user;
+                        window.colRef = collection(db, 'artifacts', appId, 'public', 'data', 'requests');
+                        setupRealtimeListener();
+                    }
+                });
+            } catch (e) {
+                console.error("Firebase auth error:", e);
             }
-          }
         }
-      }
-    }
-  </script>
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-    body {
-      font-family: 'Inter', sans-serif;
-    }
-    .chart-container {
-      position: relative;
-      height: 280px;
-      width: 100%;
-    }
-  </style>
+        initFirebase();
+    </script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
 </head>
-<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col antialiased">
+<body class="h-full w-full bg-slate-50 text-slate-800 font-sans antialiased flex flex-col relative overflow-x-hidden">
 
-  <!-- TOAST DE NOTIFICAÇÃO -->
-  <div id="toast" class="fixed bottom-5 right-5 z-50 transform transition-all duration-300 translate-y-20 opacity-0 pointer-events-none flex items-center gap-3 px-4 py-3 rounded-2xl shadow-xl border text-sm font-medium bg-white"></div>
-
-  <!-- CABEÇALHO PRINCIPAL -->
-  <header class="bg-white/95 backdrop-blur border-b border-slate-200 sticky top-0 z-30 shadow-xs">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap items-center justify-between gap-4">
-      
-      <!-- TÍTULO PRINCIPAL -->
-      <div>
-        <h1 id="display-app-title" class="text-xl font-bold tracking-tight text-slate-900">
-          PCP - Gestão de Bloqueio
-        </h1>
-        <p id="display-app-subtitle" class="text-xs text-slate-500 font-medium">
-          Indicador e fluxo de solicitação de desbloqueio
-        </p>
-      </div>
-
-      <!-- SELETOR DE ANO, ABAS E CONFIGURAÇÕES -->
-      <div class="flex items-center gap-2 sm:gap-3 flex-wrap">
-        
-        <!-- SELETOR DE ANO (ATÉ 2100) -->
-        <div class="flex items-center bg-slate-100 p-1.5 rounded-2xl border border-slate-200">
-          <label for="filtro-ano-global" class="text-xs font-semibold text-slate-600 pl-2 pr-1.5 flex items-center gap-1.5">
-            <i class="fa-regular fa-calendar text-sky-600"></i>
-            <span>Ano:</span>
-          </label>
-          <select id="filtro-ano-global" onchange="alterarAnoFiltro(this.value)" class="bg-white border border-slate-200 text-slate-800 text-xs font-bold rounded-xl px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-sky-200 cursor-pointer shadow-xs">
-            <option value="2026" selected>2026</option>
-            <option value="TODOS">Todos os Anos</option>
-          </select>
+    <!-- Header com Menu Lateral Retrátil -->
+    <header class="bg-slate-900 text-white shadow-md relative z-30 w-full">
+        <div class="w-full px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div class="flex items-center space-x-3">
+                <button onclick="toggleSidebar()" class="p-2 text-slate-300 hover:text-white rounded-xl transition focus:outline-none">
+                    <i class="fa-solid fa-bars text-2xl"></i>
+                </button>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight" id="lbl-titulo-portal">PCP - Solicitação de Liberação</h1>
+                </div>
+            </div>
+            <div class="flex items-center space-x-3">
+                <button onclick="openModal()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-4 py-2.5 rounded-xl shadow transition duration-200 flex items-center space-x-2">
+                    <i class="fa-solid fa-plus"></i>
+                    <span id="lbl-btn-nova-analise">Nova Análise</span>
+                </button>
+            </div>
         </div>
+    </header>
 
-        <!-- SELETOR DE VISTAS (ABAS) -->
-        <nav class="flex items-center bg-slate-100 p-1.5 rounded-2xl border border-slate-200 flex-wrap gap-1">
-          <button onclick="switchTab('mg1')" id="tab-mg1" class="tab-btn flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all duration-200 text-white bg-sky-600 shadow-sm">
-            <i class="fa-solid fa-industry"></i>
-            <span id="display-tab-mg1">MG1</span>
-            <span id="badge-mg1" class="ml-1 px-1.5 py-0.2 text-[11px] rounded-full bg-white/20 text-white font-bold">0</span>
-          </button>
-          
-          <button onclick="switchTab('mg4')" id="tab-mg4" class="tab-btn flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all duration-200 text-slate-600 hover:text-slate-900 hover:bg-slate-200/60">
-            <i class="fa-solid fa-industry"></i>
-            <span id="display-tab-mg4">MG4</span>
-            <span id="badge-mg4" class="ml-1 px-1.5 py-0.2 text-[11px] rounded-full bg-slate-200 text-slate-700 font-bold">0</span>
-          </button>
-          
-          <button onclick="switchTab('geral')" id="tab-geral" class="tab-btn flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all duration-200 text-slate-600 hover:text-slate-900 hover:bg-slate-200/60">
-            <i class="fa-solid fa-chart-pie"></i>
-            <span id="display-tab-geral">Visão Geral</span>
-          </button>
-
-          <!-- ABA: NÃO LIBERADOS -->
-          <button onclick="switchTab('naoliberados')" id="tab-naoliberados" class="tab-btn flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all duration-200 text-slate-600 hover:text-rose-700 hover:bg-rose-50">
-            <i class="fa-solid fa-ban text-rose-500"></i>
-            <span id="display-tab-naoliberados">Não Liberados</span>
-            <span id="badge-naoliberados" class="ml-1 px-1.5 py-0.2 text-[11px] rounded-full bg-rose-100 text-rose-700 font-bold border border-rose-200">0</span>
-          </button>
-        </nav>
-
-        <!-- ENGRENAGEM: ALTERAÇÃO DE CABEÇALHO E NOMES -->
-        <button onclick="openConfigModal()" title="Alteração de cabeçalho e nomes dos gráficos" class="w-10 h-10 rounded-2xl bg-white border border-slate-200 hover:border-slate-300 text-slate-600 hover:text-sky-600 shadow-xs flex items-center justify-center transition-all active:scale-95">
-          <i class="fa-solid fa-gear text-base"></i>
-        </button>
-      </div>
-
+    <!-- Sidebar / Menu Lateral -->
+    <div id="sidebarOverlay" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden z-40 transition-opacity" onclick="toggleSidebar()"></div>
+    <div id="sidebarMenu" class="fixed inset-y-0 left-0 w-72 bg-white shadow-2xl z-50 transform -translate-x-full transition-transform duration-300 ease-in-out flex flex-col">
+        <div class="p-5 bg-slate-900 text-white flex justify-between items-center">
+            <h2 class="font-bold text-base flex items-center gap-2"><i class="fa-solid fa-bars"></i> Menu do Sistema</h2>
+            <button onclick="toggleSidebar()" class="text-slate-300 hover:text-white p-1 rounded-lg">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+        </div>
+        <div class="p-4 space-y-2 flex-1 overflow-y-auto">
+            <button onclick="switchTab('geral'); toggleSidebar();" class="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition">
+                <i class="fa-solid fa-table-cells text-slate-600 w-5"></i>
+                <span id="menu-lbl-geral">Geral</span>
+            </button>
+            <button onclick="switchTab('analise'); toggleSidebar();" class="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition">
+                <i class="fa-solid fa-magnifying-glass-chart text-slate-600 w-5"></i>
+                <span id="menu-lbl-analise">Em Análise</span>
+            </button>
+            <button onclick="switchTab('indicadores'); toggleSidebar();" class="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition">
+                <i class="fa-solid fa-chart-pie text-slate-600 w-5"></i>
+                <span id="menu-lbl-indicadores">Indicadores</span>
+            </button>
+            <hr class="my-2 border-slate-100">
+            <button onclick="switchTab('configuracoes'); toggleSidebar();" class="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition">
+                <i class="fa-solid fa-gear text-slate-600 w-5"></i>
+                <span id="menu-lbl-config">Configurações</span>
+            </button>
+        </div>
+        <div class="p-4 border-t border-slate-100 text-center text-xs text-slate-400">
+            Versão 3.3 - Firebase Sync
+        </div>
     </div>
-  </header>
 
-  <!-- CONTEÚDO PRINCIPAL -->
-  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-
-    <!-- ============================================== -->
-    <!-- SECÇÃO MG1 (GRÁFICOS EM COLUNAS VERTICAIS)     -->
-    <!-- ============================================== -->
-    <section id="view-mg1" class="space-y-6">
-      
-      <!-- Cartões de Resumo Rápido -->
-      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div class="bg-white border border-slate-200 p-4 rounded-2xl shadow-xs">
-          <span class="text-xs text-slate-500 font-medium flex items-center gap-1.5">
-            <span class="w-2 h-2 rounded-full bg-sky-500"></span> 
-            <span id="display-card-mg1-cat1">Produto Acabado</span>
-          </span>
-          <p id="kpi-mg1-acabado" class="text-lg font-bold text-sky-700 mt-1">0 kg <span class="text-xs font-normal text-slate-500">(0 t)</span></p>
-        </div>
-        <div class="bg-white border border-slate-200 p-4 rounded-2xl shadow-xs">
-          <span class="text-xs text-slate-500 font-medium flex items-center gap-1.5">
-            <span class="w-2 h-2 rounded-full bg-indigo-500"></span> 
-            <span id="display-card-mg1-cat2">Semiacabado</span>
-          </span>
-          <p id="kpi-mg1-semi" class="text-lg font-bold text-indigo-700 mt-1">0 kg <span class="text-xs font-normal text-slate-500">(0 t)</span></p>
-        </div>
-        <div class="bg-white border border-slate-200 p-4 rounded-2xl shadow-xs">
-          <span class="text-xs text-slate-500 font-medium flex items-center gap-1.5">
-            <span class="w-2 h-2 rounded-full bg-rose-500"></span> Recusados
-          </span>
-          <p id="kpi-mg1-recusado" class="text-lg font-bold text-rose-600 mt-1">0 kg <span class="text-xs font-normal text-slate-500">(0 t)</span></p>
-        </div>
-        <div class="bg-white border border-slate-200 p-4 rounded-2xl shadow-xs">
-          <span class="text-xs text-slate-500 font-medium flex items-center gap-1.5">
-            <span class="w-2 h-2 rounded-full bg-emerald-500"></span> Total Desbloqueado
-          </span>
-          <p id="kpi-mg1-total" class="text-lg font-bold text-emerald-700 mt-1">0 kg <span class="text-xs font-normal text-slate-500">(0 t)</span></p>
-        </div>
-      </div>
-
-      <!-- GRÁFICOS MG1 (VERTICAL - UM EMBAIXO DO OUTRO) -->
-      <div class="flex flex-col space-y-6">
+    <!-- Container em Tela Cheia Responsivo -->
+    <main class="flex-1 w-full px-3 sm:px-6 lg:px-8 py-6 space-y-6 overflow-y-auto">
         
-        <!-- 1. Categoria 1 - Mês -->
-        <div class="bg-white border border-slate-200 rounded-3xl p-5 shadow-xs">
-          <div class="flex items-center justify-between mb-3 border-b border-slate-100 pb-2.5">
-            <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
-              <span class="w-3 h-3 rounded-full bg-sky-500"></span>
-              <span id="display-chart-mg1-cat1">Produto Acabado - Mês</span>
-            </h3>
-            <span class="text-xs font-medium text-slate-400">Volume mensal vertical em toneladas (t)</span>
-          </div>
-          <div class="chart-container">
-            <canvas id="chart-mg1-acabado"></canvas>
-          </div>
-        </div>
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden w-full">
+            <div class="p-4 sm:p-5 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4 flex-wrap">
+                <div id="searchContainer" class="flex items-center space-x-2 w-full sm:w-auto">
+                    <div class="relative w-full sm:w-80">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                            <i class="fa-solid fa-search"></i>
+                        </span>
+                        <input type="text" id="searchInput" onkeyup="filterTable()" placeholder="Buscar por cliente, item ou descrição..." class="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-500 focus:bg-white transition">
+                    </div>
+                </div>
 
-        <!-- 2. Categoria 2 - Mês -->
-        <div class="bg-white border border-slate-200 rounded-3xl p-5 shadow-xs">
-          <div class="flex items-center justify-between mb-3 border-b border-slate-100 pb-2.5">
-            <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
-              <span class="w-3 h-3 rounded-full bg-indigo-500"></span>
-              <span id="display-chart-mg1-cat2">Semiacabado - Mês</span>
-            </h3>
-            <span class="text-xs font-medium text-slate-400">Volume mensal vertical em toneladas (t)</span>
-          </div>
-          <div class="chart-container">
-            <canvas id="chart-mg1-semi"></canvas>
-          </div>
-        </div>
+                <div id="filtersContainer" class="flex items-center space-x-3 w-full sm:w-auto justify-end flex-wrap gap-2">
+                    <select id="unitFilter" onchange="filterTable()" class="bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-500 transition">
+                        <option value="">Todas as Unidades</option>
+                        <option value="MG1">Unidade MG1</option>
+                        <option value="MG4">Unidade MG4</option>
+                    </select>
 
-        <!-- 3. Clientes MG1 (Colunas Verticais) -->
-        <div class="bg-white border border-slate-200 rounded-3xl p-5 shadow-xs">
-          <div class="flex items-center justify-between mb-3 border-b border-slate-100 pb-2.5">
-            <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
-              <span class="w-3 h-3 rounded-full bg-amber-500"></span>
-              <span id="display-chart-mg1-clientes">Clientes (MG1)</span>
-            </h3>
-            <span class="text-xs font-medium text-slate-400">Distribuição total por cliente em colunas (t)</span>
-          </div>
-          <div class="chart-container">
-            <canvas id="chart-mg1-clientes"></canvas>
-          </div>
-        </div>
-
-        <!-- 4. Recusados MG1 -->
-        <div class="bg-white border border-slate-200 rounded-3xl p-5 shadow-xs">
-          <div class="flex items-center justify-between mb-3 border-b border-slate-100 pb-2.5">
-            <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
-              <span class="w-3 h-3 rounded-full bg-rose-500"></span>
-              <span id="display-chart-mg1-recusado">Recusados por Mês</span>
-            </h3>
-            <span class="text-xs font-medium text-slate-400">Evolução mensal de materiais recusados</span>
-          </div>
-          <div class="chart-container">
-            <canvas id="chart-mg1-recusado"></canvas>
-          </div>
-        </div>
-
-        <!-- 5. Geral MG1 -->
-        <div class="bg-white border border-slate-200 rounded-3xl p-5 shadow-xs">
-          <div class="flex items-center justify-between mb-3 border-b border-slate-100 pb-2.5">
-            <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
-              <span class="w-3 h-3 rounded-full bg-emerald-500"></span>
-              <span id="display-chart-mg1-geral">Geral MG1 (Produto Acabado e Semiacabado)</span>
-            </h3>
-            <span class="text-xs font-medium text-slate-400">Consolidado mensal acumulado</span>
-          </div>
-          <div class="chart-container">
-            <canvas id="chart-mg1-geral"></canvas>
-          </div>
-        </div>
-
-      </div>
-
-      <!-- ÁREA: EM ANÁLISE (MG1) -->
-      <div class="bg-white border border-slate-200 rounded-3xl p-5 shadow-xs">
-        <div class="flex flex-wrap items-center justify-between gap-4 mb-4 pb-3 border-b border-slate-100">
-          <div>
-            <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
-              <i class="fa-solid fa-hourglass-half text-amber-500"></i>
-              <span id="display-sec-mg1-analise">Em Análise - Solicitações de Desbloqueio (MG1)</span>
-            </h2>
-            <p class="text-xs text-slate-500">Materiais aguardando decisão do PCP para libertação ou recusa.</p>
-          </div>
-          <button onclick="openModal('MG1')" class="bg-sky-600 hover:bg-sky-700 active:scale-95 text-white px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 shadow-sm transition-all">
-            <i class="fa-solid fa-plus"></i>
-            Cadastrar Solicitação
-          </button>
-        </div>
-
-        <!-- Tabela Em Análise MG1 -->
-        <div class="overflow-x-auto border border-slate-100 rounded-xl">
-          <table class="w-full text-left text-xs text-slate-700">
-            <thead class="bg-slate-50 text-slate-500 uppercase font-semibold text-[11px] border-b border-slate-200">
-              <tr>
-                <th class="p-3">Cliente</th>
-                <th class="p-3">Item</th>
-                <th class="p-3">Descrição</th>
-                <th class="p-3 text-right">Quantidade (kg / t)</th>
-                <th class="p-3">Status / Categoria</th>
-                <th class="p-3 text-center">Ações</th>
-              </tr>
-            </thead>
-            <tbody id="tbody-mg1-analise" class="divide-y divide-slate-100 font-normal">
-              <!-- Renderizado dinamicamente -->
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-
-
-    <!-- ============================================== -->
-    <!-- SECÇÃO MG4 (GRÁFICOS EM COLUNAS VERTICAIS)     -->
-    <!-- ============================================== -->
-    <section id="view-mg4" class="hidden space-y-6">
-      
-      <!-- Cartões de Resumo Rápido -->
-      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div class="bg-white border border-slate-200 p-4 rounded-2xl shadow-xs">
-          <span class="text-xs text-slate-500 font-medium flex items-center gap-1.5">
-            <span class="w-2 h-2 rounded-full bg-purple-500"></span>
-            <span id="display-card-mg4-cat1">Impresso</span>
-          </span>
-          <p id="kpi-mg4-impresso" class="text-lg font-bold text-purple-700 mt-1">0 kg <span class="text-xs font-normal text-slate-500">(0 t)</span></p>
-        </div>
-        <div class="bg-white border border-slate-200 p-4 rounded-2xl shadow-xs">
-          <span class="text-xs text-slate-500 font-medium flex items-center gap-1.5">
-            <span class="w-2 h-2 rounded-full bg-teal-500"></span>
-            <span id="display-card-mg4-cat2">Rótulos</span>
-          </span>
-          <p id="kpi-mg4-rotulos" class="text-lg font-bold text-teal-700 mt-1">0 kg <span class="text-xs font-normal text-slate-500">(0 t)</span></p>
-        </div>
-        <div class="bg-white border border-slate-200 p-4 rounded-2xl shadow-xs">
-          <span class="text-xs text-slate-500 font-medium flex items-center gap-1.5">
-            <span class="w-2 h-2 rounded-full bg-rose-500"></span> Recusados
-          </span>
-          <p id="kpi-mg4-recusado" class="text-lg font-bold text-rose-600 mt-1">0 kg <span class="text-xs font-normal text-slate-500">(0 t)</span></p>
-        </div>
-        <div class="bg-white border border-slate-200 p-4 rounded-2xl shadow-xs">
-          <span class="text-xs text-slate-500 font-medium flex items-center gap-1.5">
-            <span class="w-2 h-2 rounded-full bg-emerald-500"></span> Total Desbloqueado
-          </span>
-          <p id="kpi-mg4-total" class="text-lg font-bold text-emerald-700 mt-1">0 kg <span class="text-xs font-normal text-slate-500">(0 t)</span></p>
-        </div>
-      </div>
-
-      <!-- GRÁFICOS MG4 (VERTICAL - UM EMBAIXO DO OUTRO) -->
-      <div class="flex flex-col space-y-6">
-        
-        <!-- 1. Categoria 1 - Mês -->
-        <div class="bg-white border border-slate-200 rounded-3xl p-5 shadow-xs">
-          <div class="flex items-center justify-between mb-3 border-b border-slate-100 pb-2.5">
-            <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
-              <span class="w-3 h-3 rounded-full bg-purple-500"></span>
-              <span id="display-chart-mg4-cat1">Impresso - Mês</span>
-            </h3>
-            <span class="text-xs font-medium text-slate-400">Volume mensal vertical em toneladas (t)</span>
-          </div>
-          <div class="chart-container">
-            <canvas id="chart-mg4-impresso"></canvas>
-          </div>
-        </div>
-
-        <!-- 2. Categoria 2 - Mês -->
-        <div class="bg-white border border-slate-200 rounded-3xl p-5 shadow-xs">
-          <div class="flex items-center justify-between mb-3 border-b border-slate-100 pb-2.5">
-            <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
-              <span class="w-3 h-3 rounded-full bg-teal-500"></span>
-              <span id="display-chart-mg4-cat2">Rótulos - Mês</span>
-            </h3>
-            <span class="text-xs font-medium text-slate-400">Volume mensal vertical em toneladas (t)</span>
-          </div>
-          <div class="chart-container">
-            <canvas id="chart-mg4-rotulos"></canvas>
-          </div>
-        </div>
-
-        <!-- 3. Clientes MG4 (Colunas Verticais) -->
-        <div class="bg-white border border-slate-200 rounded-3xl p-5 shadow-xs">
-          <div class="flex items-center justify-between mb-3 border-b border-slate-100 pb-2.5">
-            <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
-              <span class="w-3 h-3 rounded-full bg-amber-500"></span>
-              <span id="display-chart-mg4-clientes">Clientes (MG4)</span>
-            </h3>
-            <span class="text-xs font-medium text-slate-400">Distribuição total por cliente em colunas (t)</span>
-          </div>
-          <div class="chart-container">
-            <canvas id="chart-mg4-clientes"></canvas>
-          </div>
-        </div>
-
-        <!-- 4. Recusados MG4 -->
-        <div class="bg-white border border-slate-200 rounded-3xl p-5 shadow-xs">
-          <div class="flex items-center justify-between mb-3 border-b border-slate-100 pb-2.5">
-            <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
-              <span class="w-3 h-3 rounded-full bg-rose-500"></span>
-              <span id="display-chart-mg4-recusado">Recusados por Mês</span>
-            </h3>
-            <span class="text-xs font-medium text-slate-400">Evolução mensal de materiais recusados</span>
-          </div>
-          <div class="chart-container">
-            <canvas id="chart-mg4-recusado"></canvas>
-          </div>
-        </div>
-
-        <!-- 5. Geral MG4 -->
-        <div class="bg-white border border-slate-200 rounded-3xl p-5 shadow-xs">
-          <div class="flex items-center justify-between mb-3 border-b border-slate-100 pb-2.5">
-            <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
-              <span class="w-3 h-3 rounded-full bg-emerald-500"></span>
-              <span id="display-chart-mg4-geral">Geral MG4 (Impresso e Rótulos)</span>
-            </h3>
-            <span class="text-xs font-medium text-slate-400">Consolidado mensal acumulado</span>
-          </div>
-          <div class="chart-container">
-            <canvas id="chart-mg4-geral"></canvas>
-          </div>
-        </div>
-
-      </div>
-
-      <!-- ÁREA: EM ANÁLISE (MG4) -->
-      <div class="bg-white border border-slate-200 rounded-3xl p-5 shadow-xs">
-        <div class="flex flex-wrap items-center justify-between gap-4 mb-4 pb-3 border-b border-slate-100">
-          <div>
-            <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
-              <i class="fa-solid fa-hourglass-half text-amber-500"></i>
-              <span id="display-sec-mg4-analise">Em Análise - Solicitações de Desbloqueio (MG4)</span>
-            </h2>
-            <p class="text-xs text-slate-500">Materiais aguardando decisão do PCP para liberação ou recusa.</p>
-          </div>
-          <button onclick="openModal('MG4')" class="bg-teal-600 hover:bg-teal-700 active:scale-95 text-white px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 shadow-sm transition-all">
-            <i class="fa-solid fa-plus"></i>
-            Cadastrar Solicitação
-          </button>
-        </div>
-
-        <!-- Tabela Em Análise MG4 -->
-        <div class="overflow-x-auto border border-slate-100 rounded-xl">
-          <table class="w-full text-left text-xs text-slate-700">
-            <thead class="bg-slate-50 text-slate-500 uppercase font-semibold text-[11px] border-b border-slate-200">
-              <tr>
-                <th class="p-3">Cliente</th>
-                <th class="p-3">Item</th>
-                <th class="p-3">Descrição</th>
-                <th class="p-3 text-right">Quantidade (kg / t)</th>
-                <th class="p-3">Status / Categoria</th>
-                <th class="p-3 text-center">Ações</th>
-              </tr>
-            </thead>
-            <tbody id="tbody-mg4-analise" class="divide-y divide-slate-100 font-normal">
-              <!-- Renderizado dinamicamente -->
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-
-
-    <!-- ============================================== -->
-    <!-- SECÇÃO GERAL (CONSOLIDADO MG1 E MG4)           -->
-    <!-- ============================================== -->
-    <section id="view-geral" class="hidden space-y-8">
-      
-      <!-- BLOCO MG1 NA VISÃO GERAL -->
-      <div class="bg-white border border-slate-200 rounded-3xl p-6 shadow-xs space-y-6">
-        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-          <div class="flex items-center gap-3">
-            <span class="px-3 py-1 bg-sky-100 text-sky-800 border border-sky-200 rounded-lg text-xs font-bold" id="display-badge-mg1">UNIDADE MG1</span>
-            <h2 class="text-lg font-bold text-slate-900">Consolidado & Não Liberados</h2>
-          </div>
-          <span class="text-xs text-slate-400 font-medium">Visão Executiva PCP</span>
-        </div>
-
-        <!-- 1. TABELA NÃO LIBERADOS / RECUSADOS COM MOTIVO (EM CIMA) -->
-        <div class="bg-rose-50/40 border border-rose-200/80 rounded-2xl p-4">
-          <h3 class="text-xs font-bold text-rose-700 uppercase tracking-wider mb-3 flex items-center gap-2">
-            <i class="fa-solid fa-ban"></i>
-            Não Liberados / Recusados (MG1)
-          </h3>
-          <div class="overflow-x-auto bg-white border border-rose-100 rounded-xl">
-            <table class="w-full text-left text-xs text-slate-700">
-              <thead class="bg-rose-50/60 text-slate-600 uppercase text-[10px] border-b border-rose-100">
-                <tr>
-                  <th class="p-2.5">Cliente</th>
-                  <th class="p-2.5">Item</th>
-                  <th class="p-2.5">Descrição</th>
-                  <th class="p-2.5 text-right">Qtd (kg / t)</th>
-                  <th class="p-2.5">Categoria</th>
-                  <th class="p-2.5">Mês</th>
-                  <th class="p-2.5 text-rose-700 font-semibold">Motivo do Bloqueio / Recusa</th>
-                </tr>
-              </thead>
-              <tbody id="tbody-geral-mg1-recusados" class="divide-y divide-rose-50">
-                <!-- Renderizado dinamicamente -->
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <!-- 2. GRÁFICOS MG1 (EMBAIXO DO OUTRO - VERTICAL) -->
-        <div class="flex flex-col space-y-6">
-          
-          <!-- Gráfico Quantidade Total Liberada -->
-          <div class="bg-slate-50 border border-slate-200 p-5 rounded-3xl">
-            <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3 flex items-center gap-2">
-              <i class="fa-solid fa-chart-simple text-sky-600"></i>
-              <span id="display-chart-geral-mg1-total">Quantidade Total Liberada por Mês (kg / t) - MG1</span>
-            </h3>
-            <div class="chart-container">
-              <canvas id="chart-geral-mg1-total"></canvas>
+                    <select id="statusFilter" onchange="filterTable()" class="bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-500 transition">
+                        <option value="">Todos os Status</option>
+                        <option value="Liberado">Liberado</option>
+                        <option value="Bloqueado">Bloqueado</option>
+                    </select>
+                </div>
             </div>
-          </div>
 
-          <!-- Gráfico Não Liberados por Mês -->
-          <div class="bg-slate-50 border border-slate-200 p-5 rounded-3xl">
-            <h3 class="text-xs font-bold text-rose-700 uppercase tracking-wider mb-3 flex items-center gap-2">
-              <i class="fa-solid fa-chart-line text-rose-600"></i>
-              <span id="display-chart-geral-mg1-recusados">Não Liberados / Recusados por Mês (kg / t) - MG1</span>
-            </h3>
-            <div class="chart-container">
-              <canvas id="chart-geral-mg1-recusados-mes"></canvas>
+            <!-- Table Geral -->
+            <div id="container-geral" class="w-full overflow-x-auto">
+                <table class="w-full text-left border-collapse min-w-[700px]">
+                    <thead>
+                        <tr class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider border-b border-slate-100 font-semibold">
+                            <th class="py-3.5 px-4 sm:px-6">Item</th>
+                            <th class="py-3.5 px-4">Cliente</th>
+                            <th class="py-3.5 px-4">Unidade</th>
+                            <th class="py-3.5 px-4">Descrição</th>
+                            <th class="py-3.5 px-4">Quantidade (kg)</th>
+                            <th class="py-3.5 px-4">Tipo</th>
+                            <th class="py-3.5 px-4">Status</th>
+                            <th class="py-3.5 px-4 sm:px-6">Motivo (Bloqueio)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody" class="divide-y divide-slate-100 text-sm text-slate-700">
+                        <!-- Dynamic rows injected via JS -->
+                    </tbody>
+                </table>
             </div>
-          </div>
 
-          <!-- Gráfico Volume por Clientes (Colunas Verticais) -->
-          <div class="bg-slate-50 border border-slate-200 p-5 rounded-3xl">
-            <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3 flex items-center gap-2">
-              <i class="fa-solid fa-users text-sky-600"></i>
-              <span id="display-chart-geral-mg1-clientes">Volume por Clientes (kg / t) - MG1</span>
-            </h3>
-            <div class="chart-container">
-              <canvas id="chart-geral-mg1-clientes"></canvas>
+            <!-- Table Em Análise -->
+            <div id="container-analise" class="w-full overflow-x-auto hidden">
+                <table class="w-full text-left border-collapse min-w-[700px]">
+                    <thead>
+                        <tr class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider border-b border-slate-100 font-semibold">
+                            <th class="py-3.5 px-4 sm:px-6">Item</th>
+                            <th class="py-3.5 px-4">Cliente</th>
+                            <th class="py-3.5 px-4">Unidade</th>
+                            <th class="py-3.5 px-4">Período</th>
+                            <th class="py-3.5 px-4">Descrição</th>
+                            <th class="py-3.5 px-4">Qtd (kg)</th>
+                            <th class="py-3.5 px-4 text-center">Tipo de Material</th>
+                            <th class="py-3.5 px-4 text-center sm:px-6">Status da Análise</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBodyAnalise" class="divide-y divide-slate-100 text-sm text-slate-700">
+                        <!-- Dynamic rows injected via JS -->
+                    </tbody>
+                </table>
             </div>
-          </div>
 
+            <!-- Container Indicadores / Gráficos Interativos -->
+            <div id="container-indicadores" class="hidden p-4 sm:p-6 space-y-6 w-full max-w-5xl mx-auto">
+                <div class="flex flex-col sm:flex-row justify-between items-center gap-4 mb-4">
+                    <h3 id="lbl-graf-titulo" class="text-lg font-bold text-slate-800"><i class="fa-solid fa-chart-pie mr-2 text-slate-700"></i>Dashboard de Indicadores e Gráficos</h3>
+                    
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <select id="globalFilterAno" onchange="renderCharts()" class="bg-slate-50 border border-slate-200 text-slate-700 text-xs font-semibold rounded-xl px-3 py-2 focus:ring-2 focus:ring-slate-500">
+                            <!-- Preenchido via JS -->
+                        </select>
+                        <select id="globalFilterMes" onchange="renderCharts()" class="bg-slate-50 border border-slate-200 text-slate-700 text-xs font-semibold rounded-xl px-3 py-2 focus:ring-2 focus:ring-slate-500">
+                            <option value="TODOS">Todos os Meses</option>
+                            <option value="1">Janeiro</option>
+                            <option value="2">Fevereiro</option>
+                            <option value="3">Março</option>
+                            <option value="4">Abril</option>
+                            <option value="5">Maio</option>
+                            <option value="6">Junho</option>
+                            <option value="7">Julho</option>
+                            <option value="8">Agosto</option>
+                            <option value="9">Setembro</option>
+                            <option value="10">Outubro</option>
+                            <option value="11">Novembro</option>
+                            <option value="12">Dezembro</option>
+                        </select>
+                        <button onclick="downloadPDF()" class="bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold px-3.5 py-2 rounded-xl shadow transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-file-pdf"></i> PDF
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="pdfExportArea" class="flex flex-col space-y-6 bg-white p-4 rounded-2xl">
+                    <!-- 1. MG1: Liberados vs Bloqueados -->
+                    <div class="bg-slate-50 border border-slate-200 p-5 rounded-2xl shadow-sm space-y-3 cursor-pointer hover:border-slate-400 transition" onclick="openInteractiveModal('MG1', 'STATUS_PAIR')">
+                        <h4 id="lbl-graf-mg1" class="text-sm font-bold text-slate-700 flex justify-between items-center">
+                            <span>MG1: Liberados vs Bloqueados</span>
+                            <span class="text-xs text-indigo-600 font-normal"><i class="fa-solid fa-hand-pointer mr-1"></i>Clique para ver materiais</span>
+                        </h4>
+                        <div id="chart-mg1-lib-bloq" class="space-y-2 pt-2"></div>
+                    </div>
+
+                    <!-- 2. MG4: Liberados vs Bloqueados -->
+                    <div class="bg-slate-50 border border-slate-200 p-5 rounded-2xl shadow-sm space-y-3 cursor-pointer hover:border-slate-400 transition" onclick="openInteractiveModal('MG4', 'STATUS_PAIR')">
+                        <h4 id="lbl-graf-mg4" class="text-sm font-bold text-slate-700 flex justify-between items-center">
+                            <span>MG4: Liberados vs Bloqueados</span>
+                            <span class="text-xs text-indigo-600 font-normal"><i class="fa-solid fa-hand-pointer mr-1"></i>Clique para ver materiais</span>
+                        </h4>
+                        <div id="chart-mg4-lib-bloq" class="space-y-2 pt-2"></div>
+                    </div>
+
+                    <!-- 3. Tipos de Materiais -->
+                    <div class="bg-slate-50 border border-slate-200 p-5 rounded-2xl shadow-sm space-y-3">
+                        <h4 id="lbl-graf-tipos" class="text-sm font-bold text-slate-700">Tipos de Materiais (Clique na barra para ver clientes por segmento)</h4>
+                        <div id="chart-tipos" class="space-y-2 pt-2"></div>
+                    </div>
+
+                    <!-- 4. Total Geral Combinado -->
+                    <div class="bg-slate-50 border border-slate-200 p-5 rounded-2xl shadow-sm space-y-3 cursor-pointer hover:border-slate-400 transition" onclick="openInteractiveModal('TODAS', 'STATUS_PAIR')">
+                        <h4 id="lbl-graf-total" class="text-sm font-bold text-slate-700 flex justify-between items-center">
+                            <span>Total Geral Combinado (MG1 & MG4)</span>
+                            <span class="text-xs text-indigo-600 font-normal"><i class="fa-solid fa-hand-pointer mr-1"></i>Clique para ver materiais</span>
+                        </h4>
+                        <div id="chart-total-combinado" class="space-y-2 pt-2"></div>
+                    </div>
+
+                    <!-- 5. Clientes MG1 - Liberados -->
+                    <div class="bg-slate-50 border border-slate-200 p-5 rounded-2xl shadow-sm space-y-3">
+                        <h4 id="lbl-graf-cli-mg1-lib" class="text-sm font-bold text-slate-700 text-emerald-700">Clientes MG1 - Liberados</h4>
+                        <div id="chart-clientes-mg1-lib" class="space-y-2 pt-2 max-h-48 overflow-y-auto"></div>
+                    </div>
+
+                    <!-- 6. Clientes MG1 - Bloqueados -->
+                    <div class="bg-slate-50 border border-slate-200 p-5 rounded-2xl shadow-sm space-y-3">
+                        <h4 id="lbl-graf-cli-mg1-bloq" class="text-sm font-bold text-slate-700 text-rose-700">Clientes MG1 - Bloqueados</h4>
+                        <div id="chart-clientes-mg1-bloq" class="space-y-2 pt-2 max-h-48 overflow-y-auto"></div>
+                    </div>
+
+                    <!-- 7. Clientes MG4 - Liberados -->
+                    <div class="bg-slate-50 border border-slate-200 p-5 rounded-2xl shadow-sm space-y-3">
+                        <h4 id="lbl-graf-cli-mg4-lib" class="text-sm font-bold text-slate-700 text-emerald-700">Clientes MG4 - Liberados</h4>
+                        <div id="chart-clientes-mg4-lib" class="space-y-2 pt-2 max-h-48 overflow-y-auto"></div>
+                    </div>
+
+                    <!-- 8. Clientes MG4 - Bloqueados -->
+                    <div class="bg-slate-50 border border-slate-200 p-5 rounded-2xl shadow-sm space-y-3">
+                        <h4 id="lbl-graf-cli-mg4-bloq" class="text-sm font-bold text-slate-700 text-rose-700">Clientes MG4 - Bloqueados</h4>
+                        <div id="chart-clientes-mg4-bloq" class="space-y-2 pt-2 max-h-48 overflow-y-auto"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Container Configurações -->
+            <div id="container-configuracoes" class="hidden p-6 space-y-6 max-w-2xl mx-auto w-full">
+                <h3 class="text-lg font-bold text-slate-800 mb-2"><i class="fa-solid fa-gear mr-2 text-slate-700"></i>Configurações e Personalização</h3>
+                <p class="text-xs text-slate-500 mb-6">Edite abaixo os nomes exibidos nas abas, botões e títulos dos gráficos do sistema.</p>
+
+                <form onsubmit="saveCustomConfig(event)" class="space-y-4 bg-slate-50 p-6 rounded-2xl border border-slate-200">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1 uppercase">Nome da Aba Geral</label>
+                            <input type="text" id="cfg-aba-geral" required class="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-slate-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1 uppercase">Nome da Aba Análise</label>
+                            <input type="text" id="cfg-aba-analise" required class="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-slate-500">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1 uppercase">Nome da Aba Indicadores</label>
+                            <input type="text" id="cfg-aba-indicadores" required class="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-slate-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1 uppercase">Botão Nova Análise</label>
+                            <input type="text" id="cfg-btn-nova" required class="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-slate-500">
+                        </div>
+                    </div>
+
+                    <div class="space-y-3">
+                        <label class="block text-xs font-bold text-slate-700 uppercase">Títulos dos Gráficos</label>
+                        <div>
+                            <label class="block text-xs text-slate-500 mb-1">Gráfico MG1 (Lib. vs Bloq.)</label>
+                            <input type="text" id="cfg-g-mg1" required class="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-slate-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-500 mb-1">Gráfico MG4 (Lib. vs Bloq.)</label>
+                            <input type="text" id="cfg-g-mg4" required class="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-slate-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-500 mb-1">Gráfico Tipos de Materiais</label>
+                            <input type="text" id="cfg-g-tipos" required class="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-slate-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-500 mb-1">Gráfico Total Geral Combinado</label>
+                            <input type="text" id="cfg-g-total" required class="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-slate-500">
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end space-x-3 pt-4">
+                        <button type="submit" class="px-5 py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-medium text-sm rounded-xl shadow transition">Salvar Configurações</button>
+                    </div>
+                </form>
+            </div>
+
+            <div id="emptyState" class="hidden py-12 text-center text-slate-400">
+                <i class="fa-solid fa-folder-open text-4xl mb-3"></i>
+                <p>Nenhum registro encontrado.</p>
+            </div>
         </div>
-      </div>
+    </main>
 
-      <!-- BLOCO MG4 NA VISÃO GERAL -->
-      <div class="bg-white border border-slate-200 rounded-3xl p-6 shadow-xs space-y-6">
-        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-          <div class="flex items-center gap-3">
-            <span class="px-3 py-1 bg-teal-100 text-teal-800 border border-teal-200 rounded-lg text-xs font-bold" id="display-badge-mg4">UNIDADE MG4</span>
-            <h2 class="text-lg font-bold text-slate-900">Consolidado & Não Liberados</h2>
-          </div>
-          <span class="text-xs text-slate-400 font-medium">Visão Executiva PCP</span>
-        </div>
-
-        <!-- 1. TABELA NÃO LIBERADOS / RECUSADOS COM MOTIVO (EM CIMA) -->
-        <div class="bg-rose-50/40 border border-rose-200/80 rounded-2xl p-4">
-          <h3 class="text-xs font-bold text-rose-700 uppercase tracking-wider mb-3 flex items-center gap-2">
-            <i class="fa-solid fa-ban"></i>
-            Não Liberados / Recusados (MG4)
-          </h3>
-          <div class="overflow-x-auto bg-white border border-rose-100 rounded-xl">
-            <table class="w-full text-left text-xs text-slate-700">
-              <thead class="bg-rose-50/60 text-slate-600 uppercase text-[10px] border-b border-rose-100">
-                <tr>
-                  <th class="p-2.5">Cliente</th>
-                  <th class="p-2.5">Item</th>
-                  <th class="p-2.5">Descrição</th>
-                  <th class="p-2.5 text-right">Qtd (kg / t)</th>
-                  <th class="p-2.5">Categoria</th>
-                  <th class="p-2.5">Mês</th>
-                  <th class="p-2.5 text-rose-700 font-semibold">Motivo do Bloqueio / Recusa</th>
-                </tr>
-              </thead>
-              <tbody id="tbody-geral-mg4-recusados" class="divide-y divide-rose-50">
-                <!-- Renderizado dinamicamente -->
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <!-- 2. GRÁFICOS MG4 (EMBAIXO DO OUTRO - VERTICAL) -->
-        <div class="flex flex-col space-y-6">
-          
-          <!-- Gráfico Quantidade Total Liberada -->
-          <div class="bg-slate-50 border border-slate-200 p-5 rounded-3xl">
-            <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3 flex items-center gap-2">
-              <i class="fa-solid fa-chart-simple text-teal-600"></i>
-              <span id="display-chart-geral-mg4-total">Quantidade Total Liberada por Mês (kg / t) - MG4</span>
-            </h3>
-            <div class="chart-container">
-              <canvas id="chart-geral-mg4-total"></canvas>
+    <!-- Modal Interativo de Detalhes dos Gráficos -->
+    <div id="interactiveModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl shadow-xl max-w-2xl w-full p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+            <div class="flex justify-between items-center border-b pb-3">
+                <h4 id="interactiveModalTitle" class="text-base font-bold text-slate-800">Detalhes dos Materiais</h4>
+                <button onclick="closeInteractiveModal()" class="text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
             </div>
-          </div>
-
-          <!-- Gráfico Não Liberados por Mês -->
-          <div class="bg-slate-50 border border-slate-200 p-5 rounded-3xl">
-            <h3 class="text-xs font-bold text-rose-700 uppercase tracking-wider mb-3 flex items-center gap-2">
-              <i class="fa-solid fa-chart-line text-rose-600"></i>
-              <span id="display-chart-geral-mg4-recusados">Não Liberados / Recusados por Mês (kg / t) - MG4</span>
-            </h3>
-            <div class="chart-container">
-              <canvas id="chart-geral-mg4-recusados-mes"></canvas>
+            <div id="interactiveModalContent" class="space-y-3">
+                <!-- Conteúdo injetado via JS -->
             </div>
-          </div>
-
-          <!-- Gráfico Volume por Clientes (Colunas Verticais) -->
-          <div class="bg-slate-50 border border-slate-200 p-5 rounded-3xl">
-            <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3 flex items-center gap-2">
-              <i class="fa-solid fa-users text-teal-600"></i>
-              <span id="display-chart-geral-mg4-clientes">Volume por Clientes (kg / t) - MG4</span>
-            </h3>
-            <div class="chart-container">
-              <canvas id="chart-geral-mg4-clientes"></canvas>
+            <div class="flex justify-end pt-2">
+                <button onclick="closeInteractiveModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold rounded-xl transition">Fechar</button>
             </div>
-          </div>
-
         </div>
-      </div>
+    </div>
 
-    </section>
-
-    <!-- ============================================== -->
-    <!-- SECÇÃO: NÃO LIBERADOS (APENAS LISTA GERAL)     -->
-    <!-- ============================================== -->
-    <section id="view-naoliberados" class="hidden space-y-6">
-      
-      <!-- Cabeçalho da Aba Não Liberados -->
-      <div class="bg-white border border-slate-200 rounded-3xl p-6 shadow-xs">
-        <div class="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-slate-100">
-          <div>
-            <div class="flex items-center gap-2.5">
-              <span class="w-8 h-8 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center font-bold text-sm">
-                <i class="fa-solid fa-ban"></i>
-              </span>
-              <h2 class="text-lg font-bold text-slate-900">Materiais Não Liberados / Recusados (Geral)</h2>
+    <!-- Modal Nova Análise -->
+    <div id="requestModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full overflow-hidden transform transition-all">
+            <div class="px-6 py-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
+                <h3 class="text-base font-bold text-slate-800">Nova Análise de Material</h3>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
             </div>
-            <p class="text-xs text-slate-500 mt-1">Lista consolidada de todos os materiais com solicitação recusada ou bloqueada pelo PCP.</p>
-          </div>
+            <form id="requestForm" onsubmit="handleFormSubmit(event)" class="p-6 space-y-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1 uppercase tracking-wide">Cliente</label>
+                        <input type="text" id="cliente" required placeholder="Ex: Indústrias ABC" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1 uppercase tracking-wide">Item (Código)</label>
+                        <input type="text" id="item" required placeholder="Ex: ITM-4029" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
+                    </div>
+                </div>
 
-          <!-- Filtros de Busca Rápida -->
-          <div class="flex items-center gap-3 flex-wrap">
-            <div class="relative">
-              <input type="text" id="filtro-naoliberados-busca" oninput="renderTabelaAbaNaoLiberados()" placeholder="Buscar por cliente, item..." class="bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:bg-white focus:border-rose-400">
-              <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-2.5 text-slate-400 text-xs"></i>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1 uppercase tracking-wide">Unidade</label>
+                        <select id="unidade" required class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
+                            <option value="MG1">MG1</option>
+                            <option value="MG4">MG4</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1 uppercase tracking-wide">Quantidade (kg)</label>
+                        <input type="number" id="quantidade" min="1" required placeholder="Ex: 50" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1 uppercase tracking-wide">Mês</label>
+                        <select id="mes" required class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
+                            <option value="1">Janeiro</option>
+                            <option value="2">Fevereiro</option>
+                            <option value="3">Março</option>
+                            <option value="4">Abril</option>
+                            <option value="5">Maio</option>
+                            <option value="6">Junho</option>
+                            <option value="7">Julho</option>
+                            <option value="8">Agosto</option>
+                            <option value="9">Setembro</option>
+                            <option value="10">Outubro</option>
+                            <option value="11">Novembro</option>
+                            <option value="12">Dezembro</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1 uppercase tracking-wide">Ano</label>
+                        <select id="ano" required class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
+                            <!-- Preenchido via JS até 2100 -->
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1 uppercase tracking-wide">Tipo Material</label>
+                        <select id="tipoMaterial" required class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
+                            <option value="Semi-acabado">Semi-acabado</option>
+                            <option value="Impresso">Impresso</option>
+                            <option value="Liso">Liso</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1 uppercase tracking-wide">Descrição</label>
+                    <input type="text" id="descricao" required placeholder="Ex: Válvula Inox" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
+                </div>
+
+                <div class="flex justify-end space-x-3 pt-4 border-t border-slate-100">
+                    <button type="button" onclick="closeModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-xl transition">Cancelar</button>
+                    <button type="submit" class="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white text-sm font-medium rounded-xl shadow transition">Confirmar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal de Confirmação (Sim / Não) -->
+    <div id="confirmModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 text-center space-y-4">
+            <div class="w-12 h-12 rounded-full flex items-center justify-center mx-auto text-xl bg-amber-100 text-amber-600">
+                <i class="fa-solid fa-question"></i>
             </div>
-            <select id="filtro-naoliberados-unidade" onchange="renderTabelaAbaNaoLiberados()" class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-700 focus:outline-none focus:border-rose-400 font-medium">
-              <option value="TODAS">Todas as Unidades</option>
-              <option value="MG1">Apenas MG1</option>
-              <option value="MG4">Apenas MG4</option>
-            </select>
-          </div>
+            <h4 id="confirmModalTitle" class="text-lg font-bold text-slate-800">Confirmação</h4>
+            <p id="confirmModalMessage" class="text-sm text-slate-600"></p>
+            <div class="flex space-x-3 pt-2">
+                <button onclick="closeConfirmModal(false)" class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium text-sm rounded-xl transition">Não</button>
+                <button onclick="closeConfirmModal(true)" class="flex-1 py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-medium text-sm rounded-xl transition">Sim</button>
+            </div>
         </div>
+    </div>
 
-        <!-- Tabela Exclusiva e Limpa de Todos os Não Liberados -->
-        <div class="overflow-x-auto mt-4 border border-rose-100 rounded-2xl">
-          <table class="w-full text-left text-xs text-slate-700">
-            <thead class="bg-rose-50/70 text-slate-700 uppercase font-semibold text-[11px] border-b border-rose-200/80">
-              <tr>
-                <th class="p-3">Unidade</th>
-                <th class="p-3">Cliente</th>
-                <th class="p-3">Item</th>
-                <th class="p-3">Descrição do Material</th>
-                <th class="p-3 text-right">Quantidade (kg / t)</th>
-                <th class="p-3">Categoria</th>
-                <th class="p-3">Mês / Ano</th>
-                <th class="p-3 text-rose-800 font-bold">Motivo do Bloqueio / Recusa</th>
-                <th class="p-3 text-center">Ações</th>
-              </tr>
-            </thead>
-            <tbody id="tbody-aba-naoliberados" class="divide-y divide-rose-50 font-normal">
-              <!-- Renderizado dinamicamente -->
-            </tbody>
-          </table>
+    <!-- Modal de Justificativa de Bloqueio -->
+    <div id="justificationModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4">
+            <div class="flex justify-between items-center border-b pb-3">
+                <h4 class="text-base font-bold text-slate-800">Justificativa de Bloqueio</h4>
+                <button onclick="closeJustificationModal(false)" class="text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <p class="text-xs text-slate-500">Informe o motivo detalhado para bloquear este item:</p>
+            <textarea id="justificativaInput" rows="4" placeholder="Digite o motivo do bloqueio..." class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"></textarea>
+            <div class="flex justify-end space-x-3 pt-2">
+                <button type="button" onclick="closeJustificationModal(false)" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-xl transition">Cancelar</button>
+                <button type="button" onclick="closeJustificationModal(true)" class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-sm font-medium rounded-xl shadow transition">Confirmar Bloqueio</button>
+            </div>
         </div>
-      </div>
-    </section>
+    </div>
 
-  </main>
+    <!-- JavaScript Lógica com Sincronização Firebase -->
+    <script>
+        let requestsData = [];
+        let currentTab = 'geral';
+        let pendingAction = null;
+        let pendingJustificationId = null;
 
-  <!-- FIREBASE SDK & INICIALIZAÇÃO -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        let customConfig = {
+            abaGeral: 'Geral',
+            abaAnalise: 'Em Análise',
+            abaIndicadores: 'Indicadores',
+            btnNova: 'Nova Análise',
+            gMg1: 'MG1: Liberados vs Bloqueados',
+            gMg4: 'MG4: Liberados vs Bloqueados',
+            gTipos: 'Tipos de Materiais',
+            gTotal: 'Total Geral Combinado (MG1 & MG4)'
+        };
 
-    // Configuração do Firebase com a sua chave
-    const firebaseConfig = {
-      apiKey: "AIzaSyD-YOUR_KEY_HERE",
-      authDomain: "pcp-bloqueado.firebaseapp.com",
-      projectId: "pcp-bloqueado",
-      storageBucket: "pcp-bloqueado.appspot.com",
-      messagingSenderId: "123456789",
-      appId: "1:123456789:web:abcdef123456"
-    };
+        const monthNames = ["", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
 
-    // Inicializa o Firebase
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
+        document.addEventListener('DOMContentLoaded', () => {
+            populateYearDropdowns();
+            applyCustomConfigUI();
+        });
 
-    // Torna as instâncias acessíveis globalmente
-    window.db = db;
-    window.firestoreTools = { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, onSnapshot };
-  </script>
+        function populateYearDropdowns() {
+            const anoSelect = document.getElementById('ano');
+            const filterAnoSelect = document.getElementById('globalFilterAno');
+            const currentYear = new Date().getFullYear();
+            
+            let anoOptions = '';
+            for (let y = currentYear; y <= 2100; y++) {
+                anoOptions += `<option value="${y}">${y}</option>`;
+            }
+            if (anoSelect) anoSelect.innerHTML = anoOptions;
 
+            let filterAnoOptions = '<option value="TODOS">Todos os Anos</option>';
+            for (let y = currentYear - 2; y <= currentYear + 10; y++) {
+                filterAnoOptions += `<option value="${y}" ${y === currentYear ? 'selected' : ''}>${y}</option>`;
+            }
+            if (filterAnoSelect) filterAnoSelect.innerHTML = filterAnoOptions;
+        }
+
+        function setupRealtimeListener() {
+            if (!window.colRef) return;
+            window.onSnapshot(window.colRef, (snapshot) => {
+                requestsData = [];
+                snapshot.forEach((docSnap) => {
+                    if (docSnap.id === 'system_config') {
+                        customConfig = { ...customConfig, ...docSnap.data() };
+                        applyCustomConfigUI();
+                    } else {
+                        requestsData.push({ id: docSnap.id, ...docSnap.data() });
+                    }
+                });
+                renderCurrentTab();
+            }, (error) => {
+                console.error("Erro no realtime listener:", error);
+            });
+        }
+
+        async function saveToFirebase(docId, data) {
+            if (!window.db || !window.appId) return;
+            const ref = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'requests', docId);
+            await window.setDoc(ref, data, { merge: true });
+        }
+
+        function switchTab(tab) {
+            currentTab = tab;
+            document.getElementById('container-geral').classList.toggle('hidden', tab !== 'geral');
+            document.getElementById('container-analise').classList.toggle('hidden', tab !== 'analise');
+            document.getElementById('container-indicadores').classList.toggle('hidden', tab !== 'indicadores');
+            document.getElementById('container-configuracoes').classList.toggle('hidden', tab !== 'configuracoes');
+            
+            const showFilters = (tab === 'geral' || tab === 'analise');
+            document.getElementById('searchContainer').style.display = showFilters ? 'flex' : 'none';
+            document.getElementById('filtersContainer').style.display = showFilters ? 'flex' : 'none';
+
+            renderCurrentTab();
+        }
+
+        function renderCurrentTab() {
+            if (currentTab === 'geral') renderGeralTable();
+            else if (currentTab === 'analise') renderAnaliseTable();
+            else if (currentTab === 'indicadores') renderCharts();
+            else if (currentTab === 'configuracoes') loadCustomConfigForm();
+        }
+
+        function filterTable() {
+            renderCurrentTab();
+        }
+
+        function getFilteredData() {
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const unit = document.getElementById('unitFilter').value;
+            const status = document.getElementById('statusFilter').value;
+
+            return requestsData.filter(item => {
+                const matchesSearch = (item.cliente || '').toLowerCase().includes(search) ||
+                                      (item.item || '').toLowerCase().includes(search) ||
+                                      (item.descricao || '').toLowerCase().includes(search);
+                const matchesUnit = unit === '' || item.unidade === unit;
+                const matchesStatus = status === '' || item.status === status;
+                return matchesSearch && matchesUnit && matchesStatus;
+            });
+        }
+
+        function renderGeralTable() {
+            const tbody = document.getElementById('tableBody');
+            const data = getFilteredData().filter(i => i.status === 'Liberado' || i.status === 'Bloqueado');
+            tbody.innerHTML = '';
+
+            document.getElementById('emptyState').classList.toggle('hidden', data.length > 0);
+
+            data.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50/80 transition";
+                
+                const badgeClass = item.status === 'Liberado' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700';
+
+                tr.innerHTML = `
+                    <td class="py-3.5 px-4 sm:px-6 font-semibold text-slate-900">${item.item}</td>
+                    <td class="py-3.5 px-4">${item.cliente}</td>
+                    <td class="py-3.5 px-4 font-medium">${item.unidade}</td>
+                    <td class="py-3.5 px-4">${item.descricao}</td>
+                    <td class="py-3.5 px-4 font-semibold">${item.quantidade} kg</td>
+                    <td class="py-3.5 px-4">${item.tipoMaterial || 'N/A'}</td>
+                    <td class="py-3.5 px-4">
+                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${badgeClass}">
+                            ${item.status}
+                        </span>
+                    </td>
+                    <td class="py-3.5 px-4 sm:px-6 text-slate-500 text-xs">${item.motivo || '-'}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderAnaliseTable() {
+            const tbody = document.getElementById('tableBodyAnalise');
+            const data = getFilteredData().filter(i => i.status === 'Em Análise');
+            tbody.innerHTML = '';
+
+            document.getElementById('emptyState').classList.toggle('hidden', data.length > 0);
+
+            data.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50/80 transition";
+
+                tr.innerHTML = `
+                    <td class="py-3.5 px-4 sm:px-6 font-semibold text-slate-900">${item.item}</td>
+                    <td class="py-3.5 px-4">${item.cliente}</td>
+                    <td class="py-3.5 px-4 font-medium">${item.unidade}</td>
+                    <td class="py-3.5 px-4 text-xs">${monthNames[item.mes] || item.mes}/${item.ano}</td>
+                    <td class="py-3.5 px-4">${item.descricao}</td>
+                    <td class="py-3.5 px-4 font-semibold">${item.quantidade} kg</td>
+                    <td class="py-3.5 px-4 text-center">${item.tipoMaterial || 'N/A'}</td>
+                    <td class="py-3.5 px-4 sm:px-6 text-center">
+                        <div class="flex items-center justify-center space-x-2">
+                            <button onclick="confirmApprove('${item.id}')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition shadow-sm">
+                                Liberar
+                            </button>
+                            <button onclick="openJustificationModal('${item.id}')" class="bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition shadow-sm">
+                                Bloquear
+                            </button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebarMenu');
+            const overlay = document.getElementById('sidebarOverlay');
+            const isHidden = sidebar.classList.contains('-translate-x-full');
+            
+            if (isHidden) {
+                sidebar.classList.remove('-translate-x-full');
+                overlay.classList.remove('hidden');
+            } else {
+                sidebar.classList.add('-translate-x-full');
+                overlay.classList.add('hidden');
+            }
+        }
+
+        function openModal() {
+            document.getElementById('requestModal').classList.remove('hidden');
+            document.getElementById('requestModal').classList.add('flex');
+        }
+
+        function closeModal() {
+            document.getElementById('requestModal').classList.add('hidden');
+            document.getElementById('requestModal').classList.remove('flex');
+            document.getElementById('requestForm').reset();
+        }
+
+        async function handleFormSubmit(e) {
+            e.preventDefault();
+            const newItem = {
+                cliente: document.getElementById('cliente').value,
+                item: document.getElementById('item').value,
+                unidade: document.getElementById('unidade').value,
+                quantidade: parseFloat(document.getElementById('quantidade').value),
+                mes: parseInt(document.getElementById('mes').value),
+                ano: parseInt(document.getElementById('ano').value),
+                tipoMaterial: document.getElementById('tipoMaterial').value,
+                descricao: document.getElementById('descricao').value,
+                status: 'Em Análise',
+                motivo: '',
+                createdAt: new Date().toISOString()
+            };
+
+            const docId = 'req_' + Date.now();
+            await saveToFirebase(docId, newItem);
+            closeModal();
+            switchTab('analise');
+        }
+
+        function confirmApprove(id) {
+            pendingAction = async () => {
+                await saveToFirebase(id, { status: 'Liberado', motivo: '' });
+            };
+            document.getElementById('confirmModalTitle').innerText = 'Liberar Material';
+            document.getElementById('confirmModalMessage').innerText = 'Tem certeza que deseja liberar esta solicitação?';
+            document.getElementById('confirmModal').classList.remove('hidden');
+            document.getElementById('confirmModal').classList.add('flex');
+        }
+
+        function closeConfirmModal(confirmed) {
+            document.getElementById('confirmModal').classList.add('hidden');
+            document.getElementById('confirmModal').classList.remove('flex');
+            if (confirmed && pendingAction) {
+                pendingAction();
+            }
+            pendingAction = null;
+        }
+
+        function openJustificationModal(id) {
+            pendingJustificationId = id;
+            document.getElementById('justificativaInput').value = '';
+            document.getElementById('justificationModal').classList.remove('hidden');
+            document.getElementById('justificationModal').classList.add('flex');
+        }
+
+        async function closeJustificationModal(confirmed) {
+            const reason = document.getElementById('justificativaInput').value.trim();
+            if (confirmed && pendingJustificationId) {
+                if (!reason) {
+                    alert("Por favor, digite uma justificativa para o bloqueio.");
+                    return;
+                }
+                await saveToFirebase(pendingJustificationId, { status: 'Bloqueado', motivo: reason });
+            }
+            document.getElementById('justificationModal').classList.add('hidden');
+            document.getElementById('justificationModal').classList.remove('flex');
+            pendingJustificationId = null;
+        }
+
+        function renderCharts() {
+            const anoSel = document.getElementById('globalFilterAno').value;
+            const mesSel = document.getElementById('globalFilterMes').value;
+
+            const filtered = requestsData.filter(item => {
+                const matchAno = (anoSel === 'TODOS' || item.ano == anoSel);
+                const matchMes = (mesSel === 'TODOS' || item.mes == mesSel);
+                return matchAno && matchMes;
+            });
+
+            renderBarChart('chart-mg1-lib-bloq', getStatusPairData(filtered, 'MG1'));
+            renderBarChart('chart-mg4-lib-bloq', getStatusPairData(filtered, 'MG4'));
+            renderBarChart('chart-tipos', getTypesData(filtered), true);
+            renderBarChart('chart-total-combinado', getStatusPairData(filtered, 'TODAS'));
+
+            renderClientList('chart-clientes-mg1-lib', getClientData(filtered, 'MG1', 'Liberado'));
+            renderClientList('chart-clientes-mg1-bloq', getClientData(filtered, 'MG1', 'Bloqueado'));
+            renderClientList('chart-clientes-mg4-lib', getClientData(filtered, 'MG4', 'Liberado'));
+            renderClientList('chart-clientes-mg4-bloq', getClientData(filtered, 'MG4', 'Bloqueado'));
+        }
+
+        function getStatusPairData(data, unit) {
+            const subset = unit === 'TODAS' ? data : data.filter(d => d.unidade === unit);
+            const lib = subset.filter(d => d.status === 'Liberado').reduce((acc, curr) => acc + (curr.quantidade || 0), 0);
+            const bloq = subset.filter(d => d.status === 'Bloqueado').reduce((acc, curr) => acc + (curr.quantidade || 0), 0);
+            return [
+                { label: 'Liberados', value: lib, color: 'bg-emerald-500' },
+                { label: 'Bloqueados', value: bloq, color: 'bg-rose-500' }
+            ];
+        }
+
+        function getTypesData(data) {
+            const types = ['Semi-acabado', 'Impresso', 'Liso'];
+            return types.map(t => {
+                const total = data.filter(d => d.tipoMaterial === t).reduce((acc, curr) => acc + (curr.quantidade || 0), 0);
+                return { label: t, value: total, color: 'bg-indigo-500', typeKey: t };
+            });
+        }
+
+        function getClientData(data, unit, status) {
+            const subset = data.filter(d => d.unidade === unit && d.status === status);
+            const map = {};
+            subset.forEach(d => {
+                map[d.cliente] = (map[d.cliente] || 0) + (d.quantidade || 0);
+            });
+            return Object.keys(map).map(k => ({ label: k, value: map[k] })).sort((a,b) => b.value - a.value);
+        }
+
+        function renderBarChart(containerId, dataset, isInteractiveType = false) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            container.innerHTML = '';
+
+            const maxVal = Math.max(...dataset.map(d => d.value), 1);
+
+            dataset.forEach(d => {
+                const pct = Math.round((d.value / maxVal) * 100);
+                const div = document.createElement('div');
+                div.className = "space-y-1";
+
+                const onClickAttr = isInteractiveType ? `onclick="openInteractiveModal('${d.typeKey}', 'TYPE')"` : '';
+                const cursorClass = isInteractiveType ? 'cursor-pointer hover:opacity-80' : '';
+
+                div.innerHTML = `
+                    <div class="flex justify-between text-xs font-semibold text-slate-600 ${cursorClass}" ${onClickAttr}>
+                        <span>${d.label}</span>
+                        <span>${d.value.toLocaleString('pt-BR')} kg</span>
+                    </div>
+                    <div class="w-full bg-slate-200 h-3 rounded-full overflow-hidden ${cursorClass}" ${onClickAttr}>
+                        <div class="${d.color} h-full transition-all duration-500" style="width: ${pct}%"></div>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function renderClientList(containerId, dataset) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            container.innerHTML = '';
+
+            if (dataset.length === 0) {
+                container.innerHTML = `<span class="text-xs text-slate-400 italic">Nenhum registro.</span>`;
+                return;
+            }
+
+            dataset.forEach(d => {
+                const div = document.createElement('div');
+                div.className = "flex justify-between items-center text-xs border-b border-slate-100 py-1";
+                div.innerHTML = `
+                    <span class="font-medium text-slate-700">${d.label}</span>
+                    <span class="font-bold text-slate-900">${d.value.toLocaleString('pt-BR')} kg</span>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function openInteractiveModal(key, category) {
+            const modal = document.getElementById('interactiveModal');
+            const title = document.getElementById('interactiveModalTitle');
+            const content = document.getElementById('interactiveModalContent');
+            content.innerHTML = '';
+
+            const anoSel = document.getElementById('globalFilterAno').value;
+            const mesSel = document.getElementById('globalFilterMes').value;
+
+            let filtered = requestsData.filter(item => {
+                const matchAno = (anoSel === 'TODOS' || item.ano == anoSel);
+                const matchMes = (mesSel === 'TODOS' || item.mes == mesSel);
+                return matchAno && matchMes;
+            });
+
+            if (category === 'STATUS_PAIR') {
+                if (key !== 'TODAS') filtered = filtered.filter(d => d.unidade === key);
+                title.innerText = `Detalhes de Materiais - ${key}`;
+            } else if (category === 'TYPE') {
+                filtered = filtered.filter(d => d.tipoMaterial === key);
+                title.innerText = `Clientes por Segmento (${key})`;
+            }
+
+            if (filtered.length === 0) {
+                content.innerHTML = `<p class="text-xs text-slate-400 py-4 text-center">Nenhum material encontrado para estes filtros.</p>`;
+            } else {
+                filtered.forEach(item => {
+                    const badgeClass = item.status === 'Liberado' ? 'bg-emerald-100 text-emerald-700' : (item.status === 'Bloqueado' ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700');
+                    const card = document.createElement('div');
+                    card.className = "p-3 bg-slate-50 border border-slate-200 rounded-xl flex flex-col sm:flex-row justify-between sm:items-center gap-2 text-xs";
+                    card.innerHTML = `
+                        <div>
+                            <div class="font-bold text-slate-800">${item.item} - ${item.cliente} (${item.unidade})</div>
+                            <div class="text-slate-500">${item.descricao} | ${item.tipoMaterial || 'N/A'}</div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="font-bold text-slate-900">${item.quantidade} kg</span>
+                            <span class="px-2 py-0.5 rounded-full font-semibold ${badgeClass}">${item.status}</span>
+                        </div>
+                    `;
+                    content.appendChild(card);
+                });
+            }
+
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeInteractiveModal() {
+            document.getElementById('interactiveModal').classList.add('hidden');
+            document.getElementById('interactiveModal').classList.remove('flex');
+        }
+
+        function loadCustomConfigForm() {
+            document.getElementById('cfg-aba-geral').value = customConfig.abaGeral;
+            document.getElementById('cfg-aba-analise').value = customConfig.abaAnalise;
+            document.getElementById('cfg-aba-indicadores').value = customConfig.abaIndicadores;
+            document.getElementById('cfg-btn-nova').value = customConfig.btnNova;
+            document.getElementById('cfg-g-mg1').value = customConfig.gMg1;
+            document.getElementById('cfg-g-mg4').value = customConfig.gMg4;
+            document.getElementById('cfg-g-tipos').value = customConfig.gTipos;
+            document.getElementById('cfg-g-total').value = customConfig.gTotal;
+        }
+
+        async function saveCustomConfig(e) {
+            e.preventDefault();
+            customConfig = {
+                abaGeral: document.getElementById('cfg-aba-geral').value,
+                abaAnalise: document.getElementById('cfg-aba-analise').value,
+                abaIndicadores: document.getElementById('cfg-aba-indicadores').value,
+                btnNova: document.getElementById('cfg-btn-nova').value,
+                gMg1: document.getElementById('cfg-g-mg1').value,
+                gMg4: document.getElementById('cfg-g-mg4').value,
+                gTipos: document.getElementById('cfg-g-tipos').value,
+                gTotal: document.getElementById('cfg-g-total').value
+            };
+
+            await saveToFirebase('system_config', customConfig);
+            applyCustomConfigUI();
+            alert("Configurações salvas e sincronizadas com sucesso!");
+        }
+
+        function applyCustomConfigUI() {
+            if (document.getElementById('menu-lbl-geral')) document.getElementById('menu-lbl-geral').innerText = customConfig.abaGeral;
+            if (document.getElementById('menu-lbl-analise')) document.getElementById('menu-lbl-analise').innerText = customConfig.abaAnalise;
+            if (document.getElementById('menu-lbl-indicadores')) document.getElementById('menu-lbl-indicadores').innerText = customConfig.abaIndicadores;
+            if (document.getElementById('lbl-btn-nova-analise')) document.getElementById('lbl-btn-nova-analise').innerText = customConfig.btnNova;
+
+            if (document.getElementById('lbl-graf-mg1')) document.getElementById('lbl-graf-mg1').children[0].innerText = customConfig.gMg1;
+            if (document.getElementById('lbl-graf-mg4')) document.getElementById('lbl-graf-mg4').children[0].innerText = customConfig.gMg4;
+            if (document.getElementById('lbl-graf-tipos')) document.getElementById('lbl-graf-tipos').innerText = customConfig.gTipos;
+            if (document.getElementById('lbl-graf-total')) document.getElementById('lbl-graf-total').children[0].innerText = customConfig.gTotal;
+        }
+
+        function downloadPDF() {
+            const element = document.getElementById('pdfExportArea');
+            const opt = {
+                margin:       0.3,
+                filename:     'relatorio_indicadores.pdf',
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2 },
+                jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+            };
+            html2pdf().set(opt).from(element).save();
+        }
+    </script>
 </body>
 </html>
