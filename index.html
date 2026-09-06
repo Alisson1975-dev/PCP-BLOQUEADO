@@ -17,7 +17,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, doc, setDoc, onSnapshot, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
         const app = initializeApp(firebaseConfig);
@@ -119,7 +119,7 @@
             </button>
         </div>
         <div class="p-4 border-t border-slate-100 text-center text-xs text-slate-400">
-            Versão 3.3 - Firebase Sync
+            Versão 3.4 - Firebase Sync
         </div>
     </div>
 
@@ -201,8 +201,7 @@
                     
                     <div class="flex items-center gap-2 flex-wrap">
                         <select id="globalFilterAno" onchange="renderCharts()" class="bg-slate-50 border border-slate-200 text-slate-700 text-xs font-semibold rounded-xl px-3 py-2 focus:ring-2 focus:ring-slate-500">
-                            <option value="TODOS">Todos os Anos</option>
-                            <option value="2026">2026</option>
+                            <!-- Preenchido via JS -->
                         </select>
                         <select id="globalFilterMes" onchange="renderCharts()" class="bg-slate-50 border border-slate-200 text-slate-700 text-xs font-semibold rounded-xl px-3 py-2 focus:ring-2 focus:ring-slate-500">
                             <option value="TODOS">Todos os Meses</option>
@@ -420,7 +419,7 @@
                     <div>
                         <label class="block text-xs font-semibold text-slate-600 mb-1 uppercase tracking-wide">Ano</label>
                         <select id="ano" required class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
-                            <option value="2026">2026</option>
+                            <!-- Preenchido via JS até 2100 -->
                         </select>
                     </div>
                     <div>
@@ -511,11 +510,6 @@
             } catch(e) {}
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
-            populateAnosSelect();
-            applyConfigNames();
-        });
-
         function setupRealtimeListener() {
             if (!window.colRef || !window.onSnapshot) return;
             window.onSnapshot(window.colRef, (snapshot) => {
@@ -526,11 +520,11 @@
                 
                 if (data.length === 0 && requests.length === 0) {
                     const initial = [
-                        { id: "ITM-1001", cliente: "Metalúrgica Alpha", unidade: "MG1", descricao: "Chapa de Aço Carbono", quantidade: 120, mes: 9, ano: 2026, tipoMaterial: "Semi-acabado", statusAnalise: "Pendente", justificativaBloqueio: "" },
-                        { id: "ITM-1002", cliente: "Polímeros do Brasil", unidade: "MG4", descricao: "Granulado Polímero X", quantidade: 500, mes: 9, ano: 2026, tipoMaterial: "Liso", statusAnalise: "Liberado", justificativaBloqueio: "" }
+                        { docId: "doc_1001", id: "ITM-1001", cliente: "Metalúrgica Alpha", unidade: "MG1", descricao: "Chapa de Aço Carbono", quantidade: 120, mes: 9, ano: 2026, tipoMaterial: "Semi-acabado", statusAnalise: "Pendente", justificativaBloqueio: "" },
+                        { docId: "doc_1002", id: "ITM-1002", cliente: "Polímeros do Brasil", unidade: "MG4", descricao: "Granulado Polímero X", quantidade: 500, mes: 9, ano: 2026, tipoMaterial: "Liso", statusAnalise: "Liberado", justificativaBloqueio: "" }
                     ];
                     initial.forEach(item => saveToFirebase(item));
-                } else {
+                } else if (data.length > 0) {
                     requests = data;
                     renderApp();
                 }
@@ -540,24 +534,14 @@
         }
 
         async function saveToFirebase(item) {
-            if (!window.setDoc || !window.doc) return;
+            if (!window.colRef || !window.setDoc || !window.doc) return;
             try {
-                const docId = String(item.id || 'ITM-' + Math.floor(Math.random()*10000));
-                
-                if (window.colRef) {
-                    await window.setDoc(window.doc(window.colRef, docId), item);
-                } else {
-                    // Fallback local se Firebase ainda estiver desconectado
-                    const index = requests.findIndex(r => r.id === item.id);
-                    if (index >= 0) {
-                        requests[index] = item;
-                    } else {
-                        requests.push(item);
-                    }
-                    renderApp();
-                }
+                const targetDocId = item.docId || 'DOC_' + Date.now() + '_' + Math.floor(Math.random()*1000);
+                item.docId = targetDocId;
+                await window.setDoc(window.doc(window.colRef, targetDocId), item);
             } catch (e) {
                 console.error("Error saving to firebase:", e);
+                showCustomModal("Aviso de Conexão", "Não foi possível salvar na nuvem. Verifique sua conexão.", "error");
             }
         }
 
@@ -574,8 +558,10 @@
                 modalAnos += `<option value="${y}" ${y === 2026 ? 'selected' : ''}>${y}</option>`;
             }
 
-            globalAno.innerHTML = anosOptions;
-            selectAno.innerHTML = modalAnos;
+            if (globalAno.options.length <= 1) {
+                globalAno.innerHTML = anosOptions;
+                selectAno.innerHTML = modalAnos;
+            }
         }
 
         function toggleSidebar() {
@@ -963,7 +949,7 @@
                     <td class="py-3.5 px-4 font-semibold text-slate-700">${req.quantidade} kg</td>
                     <td class="py-3.5 px-4 text-center font-medium text-slate-700">${req.tipoMaterial}</td>
                     <td class="py-3.5 px-4 text-center sm:px-6">
-                        <select onchange="handleStatusAnaliseChange('${req.id}', this)" class="bg-slate-50 border text-xs font-bold rounded-xl px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-slate-500 transition ${statusAnaliseClass}">
+                        <select onchange="handleStatusAnaliseChange('${req.docId || req.id}', this)" class="bg-slate-50 border text-xs font-bold rounded-xl px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-slate-500 transition ${statusAnaliseClass}">
                             <option value="Pendente" ${req.statusAnalise === 'Pendente' ? 'selected' : ''}>Pendente (Aguardando)</option>
                             <option value="Liberado" ${req.statusAnalise === 'Liberado' ? 'selected' : ''}>Liberado</option>
                             <option value="Bloqueado" ${req.statusAnalise === 'Bloqueado' ? 'selected' : ''}>Bloqueado</option>
@@ -974,36 +960,36 @@
             });
         }
 
-        function handleStatusAnaliseChange(id, selectElement) {
+        function handleStatusAnaliseChange(key, selectElement) {
             const novoStatus = selectElement.value;
-            const req = requests.find(r => r.id === id);
+            const req = requests.find(r => (r.docId === key || r.id === key));
             if (!req) return;
 
             if (novoStatus === 'Bloqueado') {
-                pendingAction = { id, novoStatus, selectElement };
+                pendingAction = { key, novoStatus, selectElement };
                 document.getElementById('justificativaInput').value = req.justificativaBloqueio || '';
                 document.getElementById('justificationModal').classList.remove('hidden');
                 document.getElementById('justificationModal').classList.add('flex');
             } else if (novoStatus === 'Liberado') {
-                pendingAction = { id, novoStatus, selectElement };
+                pendingAction = { key, novoStatus, selectElement };
                 document.getElementById('confirmModalTitle').innerText = "Confirmar Liberação";
-                document.getElementById('confirmModalMessage').innerText = `Deseja realmente liberar o item ${id}?`;
+                document.getElementById('confirmModalMessage').innerText = `Deseja realmente liberar o item ${req.id}?`;
                 document.getElementById('confirmModal').classList.remove('hidden');
                 document.getElementById('confirmModal').classList.add('flex');
             }
         }
 
-        async function closeConfirmModal(confirmed) {
+        function closeConfirmModal(confirmed) {
             const modal = document.getElementById('confirmModal');
             modal.classList.add('hidden');
             modal.classList.remove('flex');
 
             if (confirmed && pendingAction) {
-                const req = requests.find(r => r.id === pendingAction.id);
+                const req = requests.find(r => (r.docId === pendingAction.key || r.id === pendingAction.key));
                 if (req) {
                     req.statusAnalise = pendingAction.novoStatus;
                     req.justificativaBloqueio = '';
-                    await saveToFirebase(req);
+                    saveToFirebase(req);
                     renderApp();
                     switchTab('geral');
                     showCustomModal("Sucesso", "Item liberado e enviado para a aba geral com sucesso.", "success");
@@ -1014,7 +1000,7 @@
             pendingAction = null;
         }
 
-        async function closeJustificationModal(confirmed) {
+        function closeJustificationModal(confirmed) {
             const modal = document.getElementById('justificationModal');
             const justificativa = document.getElementById('justificativaInput').value.trim();
 
@@ -1024,11 +1010,11 @@
                     return;
                 }
                 if (pendingAction) {
-                    const req = requests.find(r => r.id === pendingAction.id);
+                    const req = requests.find(r => (r.docId === pendingAction.key || r.id === pendingAction.key));
                     if (req) {
                         req.statusAnalise = pendingAction.novoStatus;
                         req.justificativaBloqueio = justificativa;
-                        await saveToFirebase(req);
+                        saveToFirebase(req);
                         renderApp();
                         switchTab('geral');
                         showCustomModal("Sucesso", "Item bloqueado, com motivo registrado, e enviado para a aba geral.", "success");
@@ -1062,7 +1048,6 @@
         }
 
         function openModal() {
-            populateAnosSelect();
             document.getElementById('requestModal').classList.remove('hidden');
             document.getElementById('requestModal').classList.add('flex');
         }
@@ -1073,19 +1058,21 @@
             document.getElementById('requestForm').reset();
         }
 
-        async function handleFormSubmit(e) {
+        function handleFormSubmit(e) {
             e.preventDefault();
-            
             const cliente = document.getElementById('cliente').value;
             const item = document.getElementById('item').value;
             const unidade = document.getElementById('unidade').value;
             const quantidade = parseFloat(document.getElementById('quantidade').value);
             const descricao = document.getElementById('descricao').value;
             const mes = parseInt(document.getElementById('mes').value);
-            const ano = parseInt(document.getElementById('ano').value) || 2026;
+            const ano = parseInt(document.getElementById('ano').value);
             const tipoMaterial = document.getElementById('tipoMaterial').value;
 
+            const targetDocId = 'DOC_' + Date.now() + '_' + Math.floor(Math.random()*1000);
+
             const newReq = {
+                docId: targetDocId,
                 id: item,
                 cliente,
                 unidade,
@@ -1098,7 +1085,8 @@
                 justificativaBloqueio: ""
             };
 
-            await saveToFirebase(newReq);
+            requests.unshift(newReq);
+            saveToFirebase(newReq);
             renderApp();
             closeModal();
             switchTab('analise');
@@ -1114,6 +1102,9 @@
             if (type === 'success') {
                 iconDiv.className = "w-12 h-12 rounded-full flex items-center justify-center mx-auto text-xl bg-emerald-100 text-emerald-600";
                 iconDiv.innerHTML = '<i class="fa-solid fa-check"></i>';
+            } else if (type === 'error') {
+                iconDiv.className = "w-12 h-12 rounded-full flex items-center justify-center mx-auto text-xl bg-rose-100 text-rose-600";
+                iconDiv.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i>';
             } else {
                 iconDiv.className = "w-12 h-12 rounded-full flex items-center justify-center mx-auto text-xl bg-slate-100 text-slate-700";
                 iconDiv.innerHTML = '<i class="fa-solid fa-info"></i>';
