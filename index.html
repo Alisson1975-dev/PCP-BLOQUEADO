@@ -201,7 +201,8 @@
                     
                     <div class="flex items-center gap-2 flex-wrap">
                         <select id="globalFilterAno" onchange="renderCharts()" class="bg-slate-50 border border-slate-200 text-slate-700 text-xs font-semibold rounded-xl px-3 py-2 focus:ring-2 focus:ring-slate-500">
-                            <!-- Preenchido via JS -->
+                            <option value="TODOS">Todos os Anos</option>
+                            <option value="2026">2026</option>
                         </select>
                         <select id="globalFilterMes" onchange="renderCharts()" class="bg-slate-50 border border-slate-200 text-slate-700 text-xs font-semibold rounded-xl px-3 py-2 focus:ring-2 focus:ring-slate-500">
                             <option value="TODOS">Todos os Meses</option>
@@ -419,7 +420,7 @@
                     <div>
                         <label class="block text-xs font-semibold text-slate-600 mb-1 uppercase tracking-wide">Ano</label>
                         <select id="ano" required class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
-                            <!-- Preenchido via JS até 2100 -->
+                            <option value="2026">2026</option>
                         </select>
                     </div>
                     <div>
@@ -478,184 +479,109 @@
         </div>
     </div>
 
-    <!-- JavaScript Lógica com Sincronização Firebase -->
+    <!-- Modal de Alerta Informativo -->
+    <div id="customModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 text-center space-y-4">
+            <div id="customModalIcon" class="w-12 h-12 rounded-full flex items-center justify-center mx-auto text-xl"></div>
+            <h4 id="customModalTitle" class="text-lg font-bold text-slate-800"></h4>
+            <p id="customModalMessage" class="text-sm text-slate-600"></p>
+            <button onclick="closeCustomModal()" class="w-full py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-medium text-sm rounded-xl transition">Entendido</button>
+        </div>
+    </div>
+
     <script>
-        let requestsData = [];
         let currentTab = 'geral';
         let pendingAction = null;
-        let pendingJustificationId = null;
+        let requests = [];
 
-        let customConfig = {
-            abaGeral: 'Geral',
-            abaAnalise: 'Em Análise',
-            abaIndicadores: 'Indicadores',
-            btnNova: 'Nova Análise',
-            gMg1: 'MG1: Liberados vs Bloqueados',
-            gMg4: 'MG4: Liberados vs Bloqueados',
-            gTipos: 'Tipos de Materiais',
-            gTotal: 'Total Geral Combinado (MG1 & MG4)'
+        let configNames = {
+            abaGeral: "Geral",
+            abaAnalise: "Em Análise",
+            abaIndicadores: "Indicadores",
+            btnNova: "Nova Análise",
+            gMg1: "MG1: Liberados vs Bloqueados",
+            gMg4: "MG4: Liberados vs Bloqueados",
+            gTipos: "Tipos de Materiais",
+            gTotal: "Total Geral Combinado (MG1 & MG4)"
         };
 
-        const monthNames = ["", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+        if (localStorage.getItem('unblock_config_v1')) {
+            try {
+                configNames = JSON.parse(localStorage.getItem('unblock_config_v1'));
+            } catch(e) {}
+        }
 
         document.addEventListener('DOMContentLoaded', () => {
-            populateYearDropdowns();
-            applyCustomConfigUI();
+            populateAnosSelect();
+            applyConfigNames();
         });
 
-        function populateYearDropdowns() {
-            const anoSelect = document.getElementById('ano');
-            const filterAnoSelect = document.getElementById('globalFilterAno');
-            const currentYear = new Date().getFullYear();
-            
-            let anoOptions = '';
-            for (let y = currentYear; y <= 2100; y++) {
-                anoOptions += `<option value="${y}">${y}</option>`;
-            }
-            if (anoSelect) anoSelect.innerHTML = anoOptions;
-
-            let filterAnoOptions = '<option value="TODOS">Todos os Anos</option>';
-            for (let y = currentYear - 2; y <= currentYear + 10; y++) {
-                filterAnoOptions += `<option value="${y}" ${y === currentYear ? 'selected' : ''}>${y}</option>`;
-            }
-            if (filterAnoSelect) filterAnoSelect.innerHTML = filterAnoOptions;
-        }
-
         function setupRealtimeListener() {
-            if (!window.colRef) return;
+            if (!window.colRef || !window.onSnapshot) return;
             window.onSnapshot(window.colRef, (snapshot) => {
-                requestsData = [];
-                snapshot.forEach((docSnap) => {
-                    if (docSnap.id === 'system_config') {
-                        customConfig = { ...customConfig, ...docSnap.data() };
-                        applyCustomConfigUI();
-                    } else {
-                        requestsData.push({ id: docSnap.id, ...docSnap.data() });
-                    }
+                const data = [];
+                snapshot.forEach(docSnap => {
+                    data.push({ firestoreId: docSnap.id, ...docSnap.data() });
                 });
-                renderCurrentTab();
-            }, (error) => {
-                console.error("Erro no realtime listener:", error);
-            });
-        }
-
-        async function saveToFirebase(docId, data) {
-            if (!window.db || !window.appId) return;
-            const ref = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'requests', docId);
-            await window.setDoc(ref, data, { merge: true });
-        }
-
-        function switchTab(tab) {
-            currentTab = tab;
-            document.getElementById('container-geral').classList.toggle('hidden', tab !== 'geral');
-            document.getElementById('container-analise').classList.toggle('hidden', tab !== 'analise');
-            document.getElementById('container-indicadores').classList.toggle('hidden', tab !== 'indicadores');
-            document.getElementById('container-configuracoes').classList.toggle('hidden', tab !== 'configuracoes');
-            
-            const showFilters = (tab === 'geral' || tab === 'analise');
-            document.getElementById('searchContainer').style.display = showFilters ? 'flex' : 'none';
-            document.getElementById('filtersContainer').style.display = showFilters ? 'flex' : 'none';
-
-            renderCurrentTab();
-        }
-
-        function renderCurrentTab() {
-            if (currentTab === 'geral') renderGeralTable();
-            else if (currentTab === 'analise') renderAnaliseTable();
-            else if (currentTab === 'indicadores') renderCharts();
-            else if (currentTab === 'configuracoes') loadCustomConfigForm();
-        }
-
-        function filterTable() {
-            renderCurrentTab();
-        }
-
-        function getFilteredData() {
-            const search = document.getElementById('searchInput').value.toLowerCase();
-            const unit = document.getElementById('unitFilter').value;
-            const status = document.getElementById('statusFilter').value;
-
-            return requestsData.filter(item => {
-                const matchesSearch = (item.cliente || '').toLowerCase().includes(search) ||
-                                      (item.item || '').toLowerCase().includes(search) ||
-                                      (item.descricao || '').toLowerCase().includes(search);
-                const matchesUnit = unit === '' || item.unidade === unit;
-                const matchesStatus = status === '' || item.status === status;
-                return matchesSearch && matchesUnit && matchesStatus;
-            });
-        }
-
-        function renderGeralTable() {
-            const tbody = document.getElementById('tableBody');
-            const data = getFilteredData().filter(i => i.status === 'Liberado' || i.status === 'Bloqueado');
-            tbody.innerHTML = '';
-
-            document.getElementById('emptyState').classList.toggle('hidden', data.length > 0);
-
-            data.forEach(item => {
-                const tr = document.createElement('tr');
-                tr.className = "hover:bg-slate-50/80 transition";
                 
-                const badgeClass = item.status === 'Liberado' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700';
-
-                tr.innerHTML = `
-                    <td class="py-3.5 px-4 sm:px-6 font-semibold text-slate-900">${item.item}</td>
-                    <td class="py-3.5 px-4">${item.cliente}</td>
-                    <td class="py-3.5 px-4 font-medium">${item.unidade}</td>
-                    <td class="py-3.5 px-4">${item.descricao}</td>
-                    <td class="py-3.5 px-4 font-semibold">${item.quantidade} kg</td>
-                    <td class="py-3.5 px-4">${item.tipoMaterial || 'N/A'}</td>
-                    <td class="py-3.5 px-4">
-                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${badgeClass}">
-                            ${item.status}
-                        </span>
-                    </td>
-                    <td class="py-3.5 px-4 sm:px-6 text-slate-500 text-xs">${item.motivo || '-'}</td>
-                `;
-                tbody.appendChild(tr);
+                if (data.length === 0 && requests.length === 0) {
+                    const initial = [
+                        { id: "ITM-1001", cliente: "Metalúrgica Alpha", unidade: "MG1", descricao: "Chapa de Aço Carbono", quantidade: 120, mes: 9, ano: 2026, tipoMaterial: "Semi-acabado", statusAnalise: "Pendente", justificativaBloqueio: "" },
+                        { id: "ITM-1002", cliente: "Polímeros do Brasil", unidade: "MG4", descricao: "Granulado Polímero X", quantidade: 500, mes: 9, ano: 2026, tipoMaterial: "Liso", statusAnalise: "Liberado", justificativaBloqueio: "" }
+                    ];
+                    initial.forEach(item => saveToFirebase(item));
+                } else {
+                    requests = data;
+                    renderApp();
+                }
+            }, (error) => {
+                console.error("Firestore snapshot error:", error);
             });
         }
 
-        function renderAnaliseTable() {
-            const tbody = document.getElementById('tableBodyAnalise');
-            const data = getFilteredData().filter(i => i.status === 'Em Análise');
-            tbody.innerHTML = '';
+        async function saveToFirebase(item) {
+            if (!window.setDoc || !window.doc) return;
+            try {
+                const docId = String(item.id || 'ITM-' + Math.floor(Math.random()*10000));
+                
+                if (window.colRef) {
+                    await window.setDoc(window.doc(window.colRef, docId), item);
+                } else {
+                    // Fallback local se Firebase ainda estiver desconectado
+                    const index = requests.findIndex(r => r.id === item.id);
+                    if (index >= 0) {
+                        requests[index] = item;
+                    } else {
+                        requests.push(item);
+                    }
+                    renderApp();
+                }
+            } catch (e) {
+                console.error("Error saving to firebase:", e);
+            }
+        }
 
-            document.getElementById('emptyState').classList.toggle('hidden', data.length > 0);
+        function populateAnosSelect() {
+            const selectAno = document.getElementById('ano');
+            const globalAno = document.getElementById('globalFilterAno');
+            if (!selectAno || !globalAno) return;
+            
+            let anosOptions = '<option value="TODOS">Todos os Anos</option>';
+            let modalAnos = '';
+            
+            for (let y = 2026; y <= 2100; y++) {
+                anosOptions += `<option value="${y}">${y}</option>`;
+                modalAnos += `<option value="${y}" ${y === 2026 ? 'selected' : ''}>${y}</option>`;
+            }
 
-            data.forEach(item => {
-                const tr = document.createElement('tr');
-                tr.className = "hover:bg-slate-50/80 transition";
-
-                tr.innerHTML = `
-                    <td class="py-3.5 px-4 sm:px-6 font-semibold text-slate-900">${item.item}</td>
-                    <td class="py-3.5 px-4">${item.cliente}</td>
-                    <td class="py-3.5 px-4 font-medium">${item.unidade}</td>
-                    <td class="py-3.5 px-4 text-xs">${monthNames[item.mes] || item.mes}/${item.ano}</td>
-                    <td class="py-3.5 px-4">${item.descricao}</td>
-                    <td class="py-3.5 px-4 font-semibold">${item.quantidade} kg</td>
-                    <td class="py-3.5 px-4 text-center">${item.tipoMaterial || 'N/A'}</td>
-                    <td class="py-3.5 px-4 sm:px-6 text-center">
-                        <div class="flex items-center justify-center space-x-2">
-                            <button onclick="confirmApprove('${item.id}')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition shadow-sm">
-                                Liberar
-                            </button>
-                            <button onclick="openJustificationModal('${item.id}')" class="bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition shadow-sm">
-                                Bloquear
-                            </button>
-                        </div>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
+            globalAno.innerHTML = anosOptions;
+            selectAno.innerHTML = modalAnos;
         }
 
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebarMenu');
             const overlay = document.getElementById('sidebarOverlay');
-            const isHidden = sidebar.classList.contains('-translate-x-full');
-            
-            if (isHidden) {
+            if (sidebar.classList.contains('-translate-x-full')) {
                 sidebar.classList.remove('-translate-x-full');
                 overlay.classList.remove('hidden');
             } else {
@@ -664,7 +590,479 @@
             }
         }
 
+        function applyConfigNames() {
+            const elMenuGeral = document.getElementById('menu-lbl-geral');
+            const elMenuAnalise = document.getElementById('menu-lbl-analise');
+            const elMenuIndicadores = document.getElementById('menu-lbl-indicadores');
+            const elBtnNova = document.getElementById('lbl-btn-nova-analise');
+            const elGMg1 = document.getElementById('lbl-graf-mg1');
+            const elGMg4 = document.getElementById('lbl-graf-mg4');
+            const elGTipos = document.getElementById('lbl-graf-tipos');
+            const elGTotal = document.getElementById('lbl-graf-total');
+
+            if (elMenuGeral) elMenuGeral.innerText = configNames.abaGeral;
+            if (elMenuAnalise) elMenuAnalise.innerText = configNames.abaAnalise;
+            if (elMenuIndicadores) elMenuIndicadores.innerText = configNames.abaIndicadores;
+            if (elBtnNova) elBtnNova.innerText = configNames.btnNova;
+
+            if (elGMg1) elGMg1.innerText = configNames.gMg1;
+            if (elGMg4) elGMg4.innerText = configNames.gMg4;
+            if (elGTipos) elGTipos.innerText = configNames.gTipos;
+            if (elGTotal) elGTotal.innerText = configNames.gTotal;
+
+            const cfgAbaGeral = document.getElementById('cfg-aba-geral');
+            const cfgAbaAnalise = document.getElementById('cfg-aba-analise');
+            const cfgAbaIndicadores = document.getElementById('cfg-aba-indicadores');
+            const cfgBtnNova = document.getElementById('cfg-btn-nova');
+            const cfgGMg1 = document.getElementById('cfg-g-mg1');
+            const cfgGMg4 = document.getElementById('cfg-g-mg4');
+            const cfgGTipos = document.getElementById('cfg-g-tipos');
+            const cfgGTotal = document.getElementById('cfg-g-total');
+
+            if (cfgAbaGeral) cfgAbaGeral.value = configNames.abaGeral;
+            if (cfgAbaAnalise) cfgAbaAnalise.value = configNames.abaAnalise;
+            if (cfgAbaIndicadores) cfgAbaIndicadores.value = configNames.abaIndicadores;
+            if (cfgBtnNova) cfgBtnNova.value = configNames.btnNova;
+            if (cfgGMg1) cfgGMg1.value = configNames.gMg1;
+            if (cfgGMg4) cfgGMg4.value = configNames.gMg4;
+            if (cfgGTipos) cfgGTipos.value = configNames.gTipos;
+            if (cfgGTotal) cfgGTotal.value = configNames.gTotal;
+        }
+
+        function saveCustomConfig(e) {
+            e.preventDefault();
+            configNames.abaGeral = document.getElementById('cfg-aba-geral').value;
+            configNames.abaAnalise = document.getElementById('cfg-aba-analise').value;
+            configNames.abaIndicadores = document.getElementById('cfg-aba-indicadores').value;
+            configNames.btnNova = document.getElementById('cfg-btn-nova').value;
+            configNames.gMg1 = document.getElementById('cfg-g-mg1').value;
+            configNames.gMg4 = document.getElementById('cfg-g-mg4').value;
+            configNames.gTipos = document.getElementById('cfg-g-tipos').value;
+            configNames.gTotal = document.getElementById('cfg-g-total').value;
+
+            localStorage.setItem('unblock_config_v1', JSON.stringify(configNames));
+            applyConfigNames();
+            showCustomModal("Sucesso", "Configurações salvas com sucesso!", "success");
+        }
+
+        function switchTab(tab) {
+            currentTab = tab;
+            const containerGeral = document.getElementById('container-geral');
+            const containerAnalise = document.getElementById('container-analise');
+            const containerIndicadores = document.getElementById('container-indicadores');
+            const containerConfig = document.getElementById('container-configuracoes');
+            
+            const searchContainer = document.getElementById('searchContainer');
+            const filtersContainer = document.getElementById('filtersContainer');
+
+            containerGeral.classList.add('hidden');
+            containerAnalise.classList.add('hidden');
+            containerIndicadores.classList.add('hidden');
+            containerConfig.classList.add('hidden');
+
+            if (tab === 'geral') {
+                containerGeral.classList.remove('hidden');
+                searchContainer.classList.remove('hidden');
+                filtersContainer.classList.remove('hidden');
+            } else if (tab === 'analise') {
+                containerAnalise.classList.remove('hidden');
+                searchContainer.classList.remove('hidden');
+                filtersContainer.classList.remove('hidden');
+            } else if (tab === 'indicadores') {
+                containerIndicadores.classList.remove('hidden');
+                searchContainer.classList.add('hidden');
+                filtersContainer.classList.add('hidden');
+                renderCharts();
+            } else if (tab === 'configuracoes') {
+                containerConfig.classList.remove('hidden');
+                searchContainer.classList.add('hidden');
+                filtersContainer.classList.add('hidden');
+            }
+            filterTable();
+        }
+
+        function renderApp() {
+            populateAnosSelect();
+            applyConfigNames();
+            filterTable();
+            if (currentTab === 'indicadores') {
+                renderCharts();
+            }
+        }
+
+        function getFilteredRequestsForCharts() {
+            const fAno = document.getElementById('globalFilterAno').value;
+            const fMes = document.getElementById('globalFilterMes').value;
+
+            return requests.filter(r => {
+                const matchAno = (fAno === 'TODOS' || String(r.ano) === String(fAno));
+                const matchMes = (fMes === 'TODOS' || String(r.mes) === String(fMes));
+                return matchAno && matchMes;
+            });
+        }
+
+        function renderCharts() {
+            const dataFilt = getFilteredRequestsForCharts();
+
+            const mg1Lib = dataFilt.filter(r => r.unidade === 'MG1' && r.statusAnalise === 'Liberado').reduce((acc, r) => acc + r.quantidade, 0);
+            const mg1Bloq = dataFilt.filter(r => r.unidade === 'MG1' && r.statusAnalise === 'Bloqueado').reduce((acc, r) => acc + r.quantidade, 0);
+            document.getElementById('chart-mg1-lib-bloq').innerHTML = renderBarPair(mg1Lib, mg1Bloq, 'Liberados (kg)', 'Bloqueados (kg)');
+
+            const mg4Lib = dataFilt.filter(r => r.unidade === 'MG4' && r.statusAnalise === 'Liberado').reduce((acc, r) => acc + r.quantidade, 0);
+            const mg4Bloq = dataFilt.filter(r => r.unidade === 'MG4' && r.statusAnalise === 'Bloqueado').reduce((acc, r) => acc + r.quantidade, 0);
+            document.getElementById('chart-mg4-lib-bloq').innerHTML = renderBarPair(mg4Lib, mg4Bloq, 'Liberados (kg)', 'Bloqueados (kg)');
+
+            const semi = dataFilt.filter(r => r.tipoMaterial === 'Semi-acabado').reduce((acc, r) => acc + r.quantidade, 0);
+            const impresso = dataFilt.filter(r => r.tipoMaterial === 'Impresso').reduce((acc, r) => acc + r.quantidade, 0);
+            const liso = dataFilt.filter(r => r.tipoMaterial === 'Liso').reduce((acc, r) => acc + r.quantidade, 0);
+            
+            document.getElementById('chart-tipos').innerHTML = `
+                <div onclick="openTipoModal('Semi-acabado')" class="cursor-pointer hover:bg-slate-100 p-2 rounded-xl transition">${renderSingleBarItem('Semi-acabado (kg)', semi, 'bg-slate-700')}</div>
+                <div onclick="openTipoModal('Impresso')" class="cursor-pointer hover:bg-slate-100 p-2 rounded-xl transition">${renderSingleBarItem('Impresso (kg)', impresso, 'bg-slate-500')}</div>
+                <div onclick="openTipoModal('Liso')" class="cursor-pointer hover:bg-slate-100 p-2 rounded-xl transition">${renderSingleBarItem('Liso (kg)', liso, 'bg-slate-400')}</div>
+            `;
+
+            const totalLib = mg1Lib + mg4Lib;
+            const totalBloq = mg1Bloq + mg4Bloq;
+            document.getElementById('chart-total-combinado').innerHTML = renderBarPair(totalLib, totalBloq, 'Total Liberados (MG1 & MG4 - kg)', 'Total Bloqueados (MG1 & MG4 - kg)', 'bg-emerald-500', 'bg-rose-500');
+
+            document.getElementById('chart-clientes-mg1-lib').innerHTML = renderClientSingleChart(dataFilt, 'MG1', 'Liberado');
+            document.getElementById('chart-clientes-mg1-bloq').innerHTML = renderClientSingleChart(dataFilt, 'MG1', 'Bloqueado');
+            document.getElementById('chart-clientes-mg4-lib').innerHTML = renderClientSingleChart(dataFilt, 'MG4', 'Liberado');
+            document.getElementById('chart-clientes-mg4-bloq').innerHTML = renderClientSingleChart(dataFilt, 'MG4', 'Bloqueado');
+        }
+
+        function renderBarPair(val1, val2, label1, label2, color1 = 'bg-emerald-500', color2 = 'bg-rose-500') {
+            const max = Math.max(val1, val2, 1);
+            const p1 = (val1 / max) * 100;
+            const p2 = (val2 / max) * 100;
+
+            return `
+                <div>
+                    <div class="flex justify-between text-xs font-semibold text-slate-600 mb-1">
+                        <span>${label1}</span><span>${val1} kg</span>
+                    </div>
+                    <div class="w-full bg-slate-200 h-3 rounded-full overflow-hidden">
+                        <div class="${color1} h-full rounded-full transition-all duration-500" style="width: ${p1}%"></div>
+                    </div>
+                </div>
+                <div>
+                    <div class="flex justify-between text-xs font-semibold text-slate-600 mb-1">
+                        <span>${label2}</span><span>${val2} kg</span>
+                    </div>
+                    <div class="w-full bg-slate-200 h-3 rounded-full overflow-hidden">
+                        <div class="${color2} h-full rounded-full transition-all duration-500" style="width: ${p2}%"></div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderSingleBarItem(label, count, colorClass) {
+            const dataFilt = getFilteredRequestsForCharts();
+            const max = Math.max(...dataFilt.map(r => r.quantidade), 1);
+            const p = (count / max) * 100;
+            return `
+                <div class="flex justify-between text-xs font-semibold text-slate-600 mb-1">
+                    <span>${label} <i class="fa-solid fa-hand-pointer text-indigo-600 ml-1"></i></span><span>${count} kg</span>
+                </div>
+                <div class="w-full bg-slate-200 h-3 rounded-full overflow-hidden">
+                    <div class="${colorClass} h-full rounded-full transition-all duration-500" style="width: ${p}%"></div>
+                </div>
+            `;
+        }
+
+        function openInteractiveModal(unidadeFiltro, mode) {
+            const dataFilt = getFilteredRequestsForCharts();
+            let matched = [];
+            if (unidadeFiltro === 'TODAS') {
+                matched = dataFilt.filter(r => r.statusAnalise === 'Liberado' || r.statusAnalise === 'Bloqueado');
+            } else {
+                matched = dataFilt.filter(r => r.unidade === unidadeFiltro && (r.statusAnalise === 'Liberado' || r.statusAnalise === 'Bloqueado'));
+            }
+
+            const title = unidadeFiltro === 'TODAS' ? 'Materiais - Total Geral Combinado' : `Materiais - Unidade ${unidadeFiltro}`;
+            document.getElementById('interactiveModalTitle').innerText = title;
+
+            let html = '';
+            if (matched.length === 0) {
+                html = '<p class="text-sm text-slate-500 text-center py-4">Nenhum material encontrado para este filtro.</p>';
+            } else {
+                html = '<div class="space-y-2">';
+                matched.forEach(item => {
+                    const statusBadge = item.statusAnalise === 'Liberado' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700';
+                    html += `
+                        <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 flex justify-between items-center text-xs">
+                            <div>
+                                <span class="font-bold text-slate-800">${item.id}</span> - ${item.descricao} (${item.cliente})
+                                <div class="text-slate-500 mt-0.5">Unidade: ${item.unidade} | Tipo: ${item.tipoMaterial} | Qtd: ${item.quantidade} kg</div>
+                            </div>
+                            <span class="px-2 py-1 rounded-full font-semibold ${statusBadge}">${item.statusAnalise}</span>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+            }
+
+            document.getElementById('interactiveModalContent').innerHTML = html;
+            document.getElementById('interactiveModal').classList.remove('hidden');
+            document.getElementById('interactiveModal').classList.add('flex');
+        }
+
+        function openTipoModal(tipoSeguimento) {
+            const dataFilt = getFilteredRequestsForCharts();
+            const matched = dataFilt.filter(r => r.tipoMaterial === tipoSeguimento && (r.statusAnalise === 'Liberado' || r.statusAnalise === 'Bloqueado'));
+
+            document.getElementById('interactiveModalTitle').innerText = `Clientes por Segmento: ${tipoSeguimento}`;
+
+            let html = '';
+            if (matched.length === 0) {
+                html = '<p class="text-sm text-slate-500 text-center py-4">Nenhum cliente encontrado para este segmento no período.</p>';
+            } else {
+                const clientMap = {};
+                matched.forEach(r => {
+                    if (!clientMap[r.cliente]) clientMap[r.cliente] = { liberado: 0, bloqueado: 0 };
+                    if (r.statusAnalise === 'Liberado') clientMap[r.cliente].liberado += r.quantidade;
+                    if (r.statusAnalise === 'Bloqueado') clientMap[r.cliente].bloqueado += r.quantidade;
+                });
+
+                html = '<div class="space-y-2">';
+                Object.keys(clientMap).forEach(cli => {
+                    const d = clientMap[cli];
+                    html += `
+                        <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 flex justify-between items-center text-xs">
+                            <span class="font-bold text-slate-800">${cli}</span>
+                            <div class="space-x-2">
+                                <span class="px-2 py-1 rounded-full bg-emerald-100 text-emerald-700 font-semibold">Liberado: ${d.liberado} kg</span>
+                                <span class="px-2 py-1 rounded-full bg-rose-100 text-rose-700 font-semibold">Bloqueado: ${d.bloqueado} kg</span>
+                            </div>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+            }
+
+            document.getElementById('interactiveModalContent').innerHTML = html;
+            document.getElementById('interactiveModal').classList.remove('hidden');
+            document.getElementById('interactiveModal').classList.add('flex');
+        }
+
+        function closeInteractiveModal() {
+            document.getElementById('interactiveModal').classList.add('hidden');
+            document.getElementById('interactiveModal').classList.remove('flex');
+        }
+
+        function renderClientSingleChart(dataSet, unidade, statusFiltro) {
+            const clientMap = {};
+            dataSet.filter(r => r.unidade === unidade && r.statusAnalise === statusFiltro)
+                .forEach(r => {
+                    if (!clientMap[r.cliente]) clientMap[r.cliente] = 0;
+                    clientMap[r.cliente] += r.quantidade;
+                });
+
+            const clients = Object.keys(clientMap);
+            if (clients.length === 0) {
+                return '<p class="text-xs text-slate-400 text-center py-4">Nenhum registro.</p>';
+            }
+
+            const max = Math.max(...Object.values(clientMap), 1);
+            const barColor = statusFiltro === 'Liberado' ? 'bg-emerald-500' : 'bg-rose-500';
+
+            return clients.map(client => {
+                const count = clientMap[client];
+                const p = (count / max) * 100;
+                return `
+                    <div class="bg-white p-3 rounded-xl border border-slate-100 space-y-1">
+                        <div class="flex justify-between text-xs font-bold text-slate-700">
+                            <span class="truncate">${client}</span>
+                            <span>${count} kg</span>
+                        </div>
+                        <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                            <div class="${barColor} h-full rounded-full transition-all duration-500" style="width: ${p}%"></div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function downloadPDF() {
+            const element = document.getElementById('pdfExportArea');
+            const opt = {
+                margin:       10,
+                filename:     'indicadores_pcp.pdf',
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, useCORS: true },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+            html2pdf().from(element).set(opt).save();
+        }
+
+        const nomesMeses = { 1: 'Janeiro', 2: 'Fevereiro', 3: 'Março', 4: 'Abril', 5: 'Maio', 6: 'Junho', 7: 'Julho', 8: 'Agosto', 9: 'Setembro', 10: 'Outubro', 11: 'Novembro', 12: 'Dezembro' };
+
+        function renderTable(dataToRender) {
+            const tbodyGeral = document.getElementById('tableBody');
+            const tbodyAnalise = document.getElementById('tableBodyAnalise');
+            const emptyState = document.getElementById('emptyState');
+            
+            tbodyGeral.innerHTML = '';
+            tbodyAnalise.innerHTML = '';
+
+            const dataGeral = dataToRender.filter(req => req.statusAnalise === 'Liberado' || req.statusAnalise === 'Bloqueado');
+            const dataAnalise = dataToRender.filter(req => req.statusAnalise === 'Pendente');
+
+            const activeList = currentTab === 'geral' ? dataGeral : (currentTab === 'analise' ? dataAnalise : []);
+
+            if (currentTab !== 'indicadores' && currentTab !== 'configuracoes' && activeList.length === 0) {
+                emptyState.classList.remove('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+            }
+
+            dataGeral.forEach((req) => {
+                let badgeColor = req.statusAnalise === 'Liberado' 
+                    ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' 
+                    : 'bg-rose-100 text-rose-700 border border-rose-200';
+
+                let unitBadge = 'bg-slate-100 text-slate-700 border-slate-200';
+
+                const trGeral = document.createElement('tr');
+                trGeral.className = 'hover:bg-slate-50/80 transition';
+                trGeral.innerHTML = `
+                    <td class="py-3.5 px-4 sm:px-6 font-semibold text-slate-800">${req.id}</td>
+                    <td class="py-3.5 px-4 font-medium text-slate-800">${req.cliente}</td>
+                    <td class="py-3.5 px-4">
+                        <span class="px-2.5 py-1 rounded-lg text-xs font-bold border inline-block ${unitBadge}">${req.unidade}</span>
+                    </td>
+                    <td class="py-3.5 px-4 text-slate-700">${req.descricao}</td>
+                    <td class="py-3.5 px-4 font-semibold text-slate-700">${req.quantidade} kg</td>
+                    <td class="py-3.5 px-4 text-slate-600">${req.tipoMaterial}</td>
+                    <td class="py-3.5 px-4">
+                        <span class="px-2.5 py-1 rounded-full text-xs font-semibold inline-block ${badgeColor}">${req.statusAnalise}</span>
+                    </td>
+                    <td class="py-3.5 px-4 sm:px-6 text-slate-600 max-w-xs truncate" title="${req.statusAnalise === 'Bloqueado' ? req.justificativaBloqueio : ''}">
+                        ${req.statusAnalise === 'Bloqueado' ? (req.justificativaBloqueio || '-') : '-'}
+                    </td>
+                `;
+                tbodyGeral.appendChild(trGeral);
+            });
+
+            dataAnalise.forEach((req) => {
+                let unitBadge = 'bg-slate-100 text-slate-700 border-slate-200';
+                let statusAnaliseClass = 'bg-amber-100 text-amber-800 border-amber-300';
+                let periodoTxt = (nomesMeses[req.mes] || '') + '/' + req.ano;
+
+                const trAnalise = document.createElement('tr');
+                trAnalise.className = 'hover:bg-slate-50/80 transition';
+                trAnalise.innerHTML = `
+                    <td class="py-3.5 px-4 sm:px-6 font-semibold text-slate-800">${req.id}</td>
+                    <td class="py-3.5 px-4 font-medium text-slate-800">${req.cliente}</td>
+                    <td class="py-3.5 px-4">
+                        <span class="px-2.5 py-1 rounded-lg text-xs font-bold border inline-block ${unitBadge}">${req.unidade}</span>
+                    </td>
+                    <td class="py-3.5 px-4 text-xs font-medium text-slate-600">${periodoTxt}</td>
+                    <td class="py-3.5 px-4 text-slate-700">${req.descricao}</td>
+                    <td class="py-3.5 px-4 font-semibold text-slate-700">${req.quantidade} kg</td>
+                    <td class="py-3.5 px-4 text-center font-medium text-slate-700">${req.tipoMaterial}</td>
+                    <td class="py-3.5 px-4 text-center sm:px-6">
+                        <select onchange="handleStatusAnaliseChange('${req.id}', this)" class="bg-slate-50 border text-xs font-bold rounded-xl px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-slate-500 transition ${statusAnaliseClass}">
+                            <option value="Pendente" ${req.statusAnalise === 'Pendente' ? 'selected' : ''}>Pendente (Aguardando)</option>
+                            <option value="Liberado" ${req.statusAnalise === 'Liberado' ? 'selected' : ''}>Liberado</option>
+                            <option value="Bloqueado" ${req.statusAnalise === 'Bloqueado' ? 'selected' : ''}>Bloqueado</option>
+                        </select>
+                    </td>
+                `;
+                tbodyAnalise.appendChild(trAnalise);
+            });
+        }
+
+        function handleStatusAnaliseChange(id, selectElement) {
+            const novoStatus = selectElement.value;
+            const req = requests.find(r => r.id === id);
+            if (!req) return;
+
+            if (novoStatus === 'Bloqueado') {
+                pendingAction = { id, novoStatus, selectElement };
+                document.getElementById('justificativaInput').value = req.justificativaBloqueio || '';
+                document.getElementById('justificationModal').classList.remove('hidden');
+                document.getElementById('justificationModal').classList.add('flex');
+            } else if (novoStatus === 'Liberado') {
+                pendingAction = { id, novoStatus, selectElement };
+                document.getElementById('confirmModalTitle').innerText = "Confirmar Liberação";
+                document.getElementById('confirmModalMessage').innerText = `Deseja realmente liberar o item ${id}?`;
+                document.getElementById('confirmModal').classList.remove('hidden');
+                document.getElementById('confirmModal').classList.add('flex');
+            }
+        }
+
+        async function closeConfirmModal(confirmed) {
+            const modal = document.getElementById('confirmModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+
+            if (confirmed && pendingAction) {
+                const req = requests.find(r => r.id === pendingAction.id);
+                if (req) {
+                    req.statusAnalise = pendingAction.novoStatus;
+                    req.justificativaBloqueio = '';
+                    await saveToFirebase(req);
+                    renderApp();
+                    switchTab('geral');
+                    showCustomModal("Sucesso", "Item liberado e enviado para a aba geral com sucesso.", "success");
+                }
+            } else if (pendingAction) {
+                renderApp();
+            }
+            pendingAction = null;
+        }
+
+        async function closeJustificationModal(confirmed) {
+            const modal = document.getElementById('justificationModal');
+            const justificativa = document.getElementById('justificativaInput').value.trim();
+
+            if (confirmed) {
+                if (!justificativa) {
+                    alert("A justificativa é obrigatória para itens bloqueados!");
+                    return;
+                }
+                if (pendingAction) {
+                    const req = requests.find(r => r.id === pendingAction.id);
+                    if (req) {
+                        req.statusAnalise = pendingAction.novoStatus;
+                        req.justificativaBloqueio = justificativa;
+                        await saveToFirebase(req);
+                        renderApp();
+                        switchTab('geral');
+                        showCustomModal("Sucesso", "Item bloqueado, com motivo registrado, e enviado para a aba geral.", "success");
+                    }
+                }
+            } else {
+                renderApp();
+            }
+
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            pendingAction = null;
+        }
+
+        function filterTable() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            const statusFilter = document.getElementById('statusFilter').value;
+            const unitFilter = document.getElementById('unitFilter').value;
+
+            const filtered = requests.filter(req => {
+                const matchQuery = req.id.toLowerCase().includes(query) ||
+                                   req.cliente.toLowerCase().includes(query) ||
+                                   req.descricao.toLowerCase().includes(query) ||
+                                   req.tipoMaterial.toLowerCase().includes(query);
+                const matchStatus = statusFilter === '' || req.statusAnalise === statusFilter;
+                const matchUnit = unitFilter === '' || req.unidade === unitFilter;
+                return matchQuery && matchStatus && matchUnit;
+            });
+
+            renderTable(filtered);
+        }
+
         function openModal() {
+            populateAnosSelect();
             document.getElementById('requestModal').classList.remove('hidden');
             document.getElementById('requestModal').classList.add('flex');
         }
@@ -677,267 +1075,57 @@
 
         async function handleFormSubmit(e) {
             e.preventDefault();
-            const newItem = {
-                cliente: document.getElementById('cliente').value,
-                item: document.getElementById('item').value,
-                unidade: document.getElementById('unidade').value,
-                quantidade: parseFloat(document.getElementById('quantidade').value),
-                mes: parseInt(document.getElementById('mes').value),
-                ano: parseInt(document.getElementById('ano').value),
-                tipoMaterial: document.getElementById('tipoMaterial').value,
-                descricao: document.getElementById('descricao').value,
-                status: 'Em Análise',
-                motivo: '',
-                createdAt: new Date().toISOString()
+            
+            const cliente = document.getElementById('cliente').value;
+            const item = document.getElementById('item').value;
+            const unidade = document.getElementById('unidade').value;
+            const quantidade = parseFloat(document.getElementById('quantidade').value);
+            const descricao = document.getElementById('descricao').value;
+            const mes = parseInt(document.getElementById('mes').value);
+            const ano = parseInt(document.getElementById('ano').value) || 2026;
+            const tipoMaterial = document.getElementById('tipoMaterial').value;
+
+            const newReq = {
+                id: item,
+                cliente,
+                unidade,
+                descricao,
+                quantidade,
+                mes,
+                ano,
+                tipoMaterial,
+                statusAnalise: "Pendente",
+                justificativaBloqueio: ""
             };
 
-            const docId = 'req_' + Date.now();
-            await saveToFirebase(docId, newItem);
+            await saveToFirebase(newReq);
+            renderApp();
             closeModal();
             switchTab('analise');
+            showCustomModal("Sucesso!", "Nova análise cadastrada e adicionada na aba Em Análise.", "success");
         }
 
-        function confirmApprove(id) {
-            pendingAction = async () => {
-                await saveToFirebase(id, { status: 'Liberado', motivo: '' });
-            };
-            document.getElementById('confirmModalTitle').innerText = 'Liberar Material';
-            document.getElementById('confirmModalMessage').innerText = 'Tem certeza que deseja liberar esta solicitação?';
-            document.getElementById('confirmModal').classList.remove('hidden');
-            document.getElementById('confirmModal').classList.add('flex');
-        }
-
-        function closeConfirmModal(confirmed) {
-            document.getElementById('confirmModal').classList.add('hidden');
-            document.getElementById('confirmModal').classList.remove('flex');
-            if (confirmed && pendingAction) {
-                pendingAction();
-            }
-            pendingAction = null;
-        }
-
-        function openJustificationModal(id) {
-            pendingJustificationId = id;
-            document.getElementById('justificativaInput').value = '';
-            document.getElementById('justificationModal').classList.remove('hidden');
-            document.getElementById('justificationModal').classList.add('flex');
-        }
-
-        async function closeJustificationModal(confirmed) {
-            const reason = document.getElementById('justificativaInput').value.trim();
-            if (confirmed && pendingJustificationId) {
-                if (!reason) {
-                    alert("Por favor, digite uma justificativa para o bloqueio.");
-                    return;
-                }
-                await saveToFirebase(pendingJustificationId, { status: 'Bloqueado', motivo: reason });
-            }
-            document.getElementById('justificationModal').classList.add('hidden');
-            document.getElementById('justificationModal').classList.remove('flex');
-            pendingJustificationId = null;
-        }
-
-        function renderCharts() {
-            const anoSel = document.getElementById('globalFilterAno').value;
-            const mesSel = document.getElementById('globalFilterMes').value;
-
-            const filtered = requestsData.filter(item => {
-                const matchAno = (anoSel === 'TODOS' || item.ano == anoSel);
-                const matchMes = (mesSel === 'TODOS' || item.mes == mesSel);
-                return matchAno && matchMes;
-            });
-
-            renderBarChart('chart-mg1-lib-bloq', getStatusPairData(filtered, 'MG1'));
-            renderBarChart('chart-mg4-lib-bloq', getStatusPairData(filtered, 'MG4'));
-            renderBarChart('chart-tipos', getTypesData(filtered), true);
-            renderBarChart('chart-total-combinado', getStatusPairData(filtered, 'TODAS'));
-
-            renderClientList('chart-clientes-mg1-lib', getClientData(filtered, 'MG1', 'Liberado'));
-            renderClientList('chart-clientes-mg1-bloq', getClientData(filtered, 'MG1', 'Bloqueado'));
-            renderClientList('chart-clientes-mg4-lib', getClientData(filtered, 'MG4', 'Liberado'));
-            renderClientList('chart-clientes-mg4-bloq', getClientData(filtered, 'MG4', 'Bloqueado'));
-        }
-
-        function getStatusPairData(data, unit) {
-            const subset = unit === 'TODAS' ? data : data.filter(d => d.unidade === unit);
-            const lib = subset.filter(d => d.status === 'Liberado').reduce((acc, curr) => acc + (curr.quantidade || 0), 0);
-            const bloq = subset.filter(d => d.status === 'Bloqueado').reduce((acc, curr) => acc + (curr.quantidade || 0), 0);
-            return [
-                { label: 'Liberados', value: lib, color: 'bg-emerald-500' },
-                { label: 'Bloqueados', value: bloq, color: 'bg-rose-500' }
-            ];
-        }
-
-        function getTypesData(data) {
-            const types = ['Semi-acabado', 'Impresso', 'Liso'];
-            return types.map(t => {
-                const total = data.filter(d => d.tipoMaterial === t).reduce((acc, curr) => acc + (curr.quantidade || 0), 0);
-                return { label: t, value: total, color: 'bg-indigo-500', typeKey: t };
-            });
-        }
-
-        function getClientData(data, unit, status) {
-            const subset = data.filter(d => d.unidade === unit && d.status === status);
-            const map = {};
-            subset.forEach(d => {
-                map[d.cliente] = (map[d.cliente] || 0) + (d.quantidade || 0);
-            });
-            return Object.keys(map).map(k => ({ label: k, value: map[k] })).sort((a,b) => b.value - a.value);
-        }
-
-        function renderBarChart(containerId, dataset, isInteractiveType = false) {
-            const container = document.getElementById(containerId);
-            if (!container) return;
-            container.innerHTML = '';
-
-            const maxVal = Math.max(...dataset.map(d => d.value), 1);
-
-            dataset.forEach(d => {
-                const pct = Math.round((d.value / maxVal) * 100);
-                const div = document.createElement('div');
-                div.className = "space-y-1";
-
-                const onClickAttr = isInteractiveType ? `onclick="openInteractiveModal('${d.typeKey}', 'TYPE')"` : '';
-                const cursorClass = isInteractiveType ? 'cursor-pointer hover:opacity-80' : '';
-
-                div.innerHTML = `
-                    <div class="flex justify-between text-xs font-semibold text-slate-600 ${cursorClass}" ${onClickAttr}>
-                        <span>${d.label}</span>
-                        <span>${d.value.toLocaleString('pt-BR')} kg</span>
-                    </div>
-                    <div class="w-full bg-slate-200 h-3 rounded-full overflow-hidden ${cursorClass}" ${onClickAttr}>
-                        <div class="${d.color} h-full transition-all duration-500" style="width: ${pct}%"></div>
-                    </div>
-                `;
-                container.appendChild(div);
-            });
-        }
-
-        function renderClientList(containerId, dataset) {
-            const container = document.getElementById(containerId);
-            if (!container) return;
-            container.innerHTML = '';
-
-            if (dataset.length === 0) {
-                container.innerHTML = `<span class="text-xs text-slate-400 italic">Nenhum registro.</span>`;
-                return;
-            }
-
-            dataset.forEach(d => {
-                const div = document.createElement('div');
-                div.className = "flex justify-between items-center text-xs border-b border-slate-100 py-1";
-                div.innerHTML = `
-                    <span class="font-medium text-slate-700">${d.label}</span>
-                    <span class="font-bold text-slate-900">${d.value.toLocaleString('pt-BR')} kg</span>
-                `;
-                container.appendChild(div);
-            });
-        }
-
-        function openInteractiveModal(key, category) {
-            const modal = document.getElementById('interactiveModal');
-            const title = document.getElementById('interactiveModalTitle');
-            const content = document.getElementById('interactiveModalContent');
-            content.innerHTML = '';
-
-            const anoSel = document.getElementById('globalFilterAno').value;
-            const mesSel = document.getElementById('globalFilterMes').value;
-
-            let filtered = requestsData.filter(item => {
-                const matchAno = (anoSel === 'TODOS' || item.ano == anoSel);
-                const matchMes = (mesSel === 'TODOS' || item.mes == mesSel);
-                return matchAno && matchMes;
-            });
-
-            if (category === 'STATUS_PAIR') {
-                if (key !== 'TODAS') filtered = filtered.filter(d => d.unidade === key);
-                title.innerText = `Detalhes de Materiais - ${key}`;
-            } else if (category === 'TYPE') {
-                filtered = filtered.filter(d => d.tipoMaterial === key);
-                title.innerText = `Clientes por Segmento (${key})`;
-            }
-
-            if (filtered.length === 0) {
-                content.innerHTML = `<p class="text-xs text-slate-400 py-4 text-center">Nenhum material encontrado para estes filtros.</p>`;
+        function showCustomModal(title, message, type) {
+            const modal = document.getElementById('customModal');
+            document.getElementById('customModalTitle').innerText = title;
+            document.getElementById('customModalMessage').innerText = message;
+            const iconDiv = document.getElementById('customModalIcon');
+            
+            if (type === 'success') {
+                iconDiv.className = "w-12 h-12 rounded-full flex items-center justify-center mx-auto text-xl bg-emerald-100 text-emerald-600";
+                iconDiv.innerHTML = '<i class="fa-solid fa-check"></i>';
             } else {
-                filtered.forEach(item => {
-                    const badgeClass = item.status === 'Liberado' ? 'bg-emerald-100 text-emerald-700' : (item.status === 'Bloqueado' ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700');
-                    const card = document.createElement('div');
-                    card.className = "p-3 bg-slate-50 border border-slate-200 rounded-xl flex flex-col sm:flex-row justify-between sm:items-center gap-2 text-xs";
-                    card.innerHTML = `
-                        <div>
-                            <div class="font-bold text-slate-800">${item.item} - ${item.cliente} (${item.unidade})</div>
-                            <div class="text-slate-500">${item.descricao} | ${item.tipoMaterial || 'N/A'}</div>
-                        </div>
-                        <div class="flex items-center gap-3">
-                            <span class="font-bold text-slate-900">${item.quantidade} kg</span>
-                            <span class="px-2 py-0.5 rounded-full font-semibold ${badgeClass}">${item.status}</span>
-                        </div>
-                    `;
-                    content.appendChild(card);
-                });
+                iconDiv.className = "w-12 h-12 rounded-full flex items-center justify-center mx-auto text-xl bg-slate-100 text-slate-700";
+                iconDiv.innerHTML = '<i class="fa-solid fa-info"></i>';
             }
 
             modal.classList.remove('hidden');
             modal.classList.add('flex');
         }
 
-        function closeInteractiveModal() {
-            document.getElementById('interactiveModal').classList.add('hidden');
-            document.getElementById('interactiveModal').classList.remove('flex');
-        }
-
-        function loadCustomConfigForm() {
-            document.getElementById('cfg-aba-geral').value = customConfig.abaGeral;
-            document.getElementById('cfg-aba-analise').value = customConfig.abaAnalise;
-            document.getElementById('cfg-aba-indicadores').value = customConfig.abaIndicadores;
-            document.getElementById('cfg-btn-nova').value = customConfig.btnNova;
-            document.getElementById('cfg-g-mg1').value = customConfig.gMg1;
-            document.getElementById('cfg-g-mg4').value = customConfig.gMg4;
-            document.getElementById('cfg-g-tipos').value = customConfig.gTipos;
-            document.getElementById('cfg-g-total').value = customConfig.gTotal;
-        }
-
-        async function saveCustomConfig(e) {
-            e.preventDefault();
-            customConfig = {
-                abaGeral: document.getElementById('cfg-aba-geral').value,
-                abaAnalise: document.getElementById('cfg-aba-analise').value,
-                abaIndicadores: document.getElementById('cfg-aba-indicadores').value,
-                btnNova: document.getElementById('cfg-btn-nova').value,
-                gMg1: document.getElementById('cfg-g-mg1').value,
-                gMg4: document.getElementById('cfg-g-mg4').value,
-                gTipos: document.getElementById('cfg-g-tipos').value,
-                gTotal: document.getElementById('cfg-g-total').value
-            };
-
-            await saveToFirebase('system_config', customConfig);
-            applyCustomConfigUI();
-            alert("Configurações salvas e sincronizadas com sucesso!");
-        }
-
-        function applyCustomConfigUI() {
-            if (document.getElementById('menu-lbl-geral')) document.getElementById('menu-lbl-geral').innerText = customConfig.abaGeral;
-            if (document.getElementById('menu-lbl-analise')) document.getElementById('menu-lbl-analise').innerText = customConfig.abaAnalise;
-            if (document.getElementById('menu-lbl-indicadores')) document.getElementById('menu-lbl-indicadores').innerText = customConfig.abaIndicadores;
-            if (document.getElementById('lbl-btn-nova-analise')) document.getElementById('lbl-btn-nova-analise').innerText = customConfig.btnNova;
-
-            if (document.getElementById('lbl-graf-mg1')) document.getElementById('lbl-graf-mg1').children[0].innerText = customConfig.gMg1;
-            if (document.getElementById('lbl-graf-mg4')) document.getElementById('lbl-graf-mg4').children[0].innerText = customConfig.gMg4;
-            if (document.getElementById('lbl-graf-tipos')) document.getElementById('lbl-graf-tipos').innerText = customConfig.gTipos;
-            if (document.getElementById('lbl-graf-total')) document.getElementById('lbl-graf-total').children[0].innerText = customConfig.gTotal;
-        }
-
-        function downloadPDF() {
-            const element = document.getElementById('pdfExportArea');
-            const opt = {
-                margin:       0.3,
-                filename:     'relatorio_indicadores.pdf',
-                image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2 },
-                jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
-            };
-            html2pdf().set(opt).from(element).save();
+        function closeCustomModal() {
+            document.getElementById('customModal').classList.add('hidden');
+            document.getElementById('customModal').classList.remove('flex');
         }
     </script>
 </body>
