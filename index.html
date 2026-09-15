@@ -1,1123 +1,749 @@
 <!DOCTYPE html>
-<html lang="pt-BR" class="h-full w-full">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PCP - Solicitação de Liberação</title>
-    <!-- Tailwind CSS CDN -->
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Google Fonts Inter -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <!-- html2pdf for robust PDF generation -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    
-    <!-- Firebase SDKs -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-
-        window.db = db;
-        window.auth = auth;
-        window.appId = appId;
-        window.colRef = null;
-        window.onSnapshot = onSnapshot;
-        window.doc = doc;
-        window.setDoc = setDoc;
-
-        async function initFirebase() {
-            try {
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
-                }
-                
-                onAuthStateChanged(auth, (user) => {
-                    if (user) {
-                        window.currentUser = user;
-                        window.colRef = collection(db, 'artifacts', appId, 'public', 'data', 'requests');
-                        setupRealtimeListener();
-                    }
-                });
-            } catch (e) {
-                console.error("Firebase auth error:", e);
-            }
-        }
-        initFirebase();
-    </script>
-
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                    },
-                }
-            }
-        }
-    </script>
+    <!-- Chart.js for analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
 </head>
-<body class="h-full w-full bg-slate-50 text-slate-800 font-sans antialiased flex flex-col relative overflow-x-hidden">
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
 
-    <!-- Header com Menu Lateral Retrátil -->
-    <header class="bg-slate-900 text-white shadow-md relative z-30 w-full">
-        <div class="w-full px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
-            <div class="flex items-center space-x-3">
-                <button onclick="toggleSidebar()" class="p-2 text-slate-300 hover:text-white rounded-xl transition focus:outline-none">
-                    <i class="fa-solid fa-bars text-2xl"></i>
-                </button>
-                <div>
-                    <h1 class="text-xl font-bold tracking-tight" id="lbl-titulo-portal">PCP - Solicitação de Liberação</h1>
-                </div>
-            </div>
-            <div class="flex items-center space-x-3">
-                <button onclick="openModal()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-4 py-2.5 rounded-xl shadow transition duration-200 flex items-center space-x-2">
-                    <i class="fa-solid fa-plus"></i>
-                    <span id="lbl-btn-nova-analise">Nova Análise</span>
-                </button>
-            </div>
+    <header class="bg-black text-white px-4 py-3 flex items-center justify-between shadow-md relative z-40">
+        <div class="flex items-center gap-3">
+            <button onclick="toggleMenu()" class="text-white hover:text-slate-300 focus:outline-none p-1">
+                <i class="fa-solid fa-bars text-xl"></i>
+            </button>
+            <h1 class="font-bold text-lg tracking-wide">PCP - Solicitação de Liberação</h1>
+        </div>
+        <div>
+            <button onclick="openNewModal()" class="bg-white text-black hover:bg-slate-200 text-xs sm:text-sm font-semibold px-3 py-1.5 rounded-lg transition shadow-sm flex items-center gap-1.5">
+                <i class="fa-solid fa-plus text-xs"></i> Nova analise
+            </button>
         </div>
     </header>
 
-    <!-- Sidebar / Menu Lateral -->
-    <div id="sidebarOverlay" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden z-40 transition-opacity" onclick="toggleSidebar()"></div>
-    <div id="sidebarMenu" class="fixed inset-y-0 left-0 w-72 bg-white shadow-2xl z-50 transform -translate-x-full transition-transform duration-300 ease-in-out flex flex-col">
-        <div class="p-5 bg-slate-900 text-white flex justify-between items-center">
-            <h2 class="font-bold text-base flex items-center gap-2"><i class="fa-solid fa-bars"></i> Menu do Sistema</h2>
-            <button onclick="toggleSidebar()" class="text-slate-300 hover:text-white p-1 rounded-lg">
+    <div id="sidebar-overlay" onclick="toggleMenu()" class="fixed inset-0 bg-black/40 z-40 hidden transition-opacity"></div>
+    <aside id="vertical-menu" class="fixed top-0 left-0 bottom-0 w-72 bg-white shadow-2xl z-50 transform -translate-x-full transition-transform duration-300 flex flex-col">
+        <div class="p-4 bg-black text-white flex justify-between items-center">
+            <span class="font-bold text-base">Menu</span>
+            <button onclick="toggleMenu()" class="text-white hover:text-slate-300 focus:outline-none p-1">
                 <i class="fa-solid fa-xmark text-lg"></i>
             </button>
         </div>
-        <div class="p-4 space-y-2 flex-1 overflow-y-auto">
-            <button onclick="switchTab('geral'); toggleSidebar();" class="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition">
-                <i class="fa-solid fa-table-cells text-slate-600 w-5"></i>
-                <span id="menu-lbl-geral">Geral</span>
+        <nav class="p-4 space-y-2 flex-1 overflow-y-auto">
+            <button onclick="switchTab('geral'); toggleMenu();" class="w-full text-left px-4 py-3 rounded-xl font-medium text-sm flex items-center gap-3 hover:bg-slate-100 transition menu-btn" data-tab="geral">
+                <i class="fa-solid fa-table-list w-5 text-slate-500"></i> Geral
             </button>
-            <button onclick="switchTab('analise'); toggleSidebar();" class="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition">
-                <i class="fa-solid fa-magnifying-glass-chart text-slate-600 w-5"></i>
-                <span id="menu-lbl-analise">Em Análise</span>
+            <button onclick="switchTab('analise'); toggleMenu();" class="w-full text-left px-4 py-3 rounded-xl font-medium text-sm flex items-center gap-3 hover:bg-slate-100 transition menu-btn" data-tab="analise">
+                <i class="fa-solid fa-clock-rotate-left w-5 text-slate-500"></i> Em Análise
             </button>
-            <button onclick="switchTab('indicadores'); toggleSidebar();" class="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition">
-                <i class="fa-solid fa-chart-pie text-slate-600 w-5"></i>
-                <span id="menu-lbl-indicadores">Indicadores</span>
+            <button onclick="switchTab('indicador'); toggleMenu();" class="w-full text-left px-4 py-3 rounded-xl font-medium text-sm flex items-center gap-3 hover:bg-slate-100 transition menu-btn" data-tab="indicador">
+                <i class="fa-solid fa-chart-column w-5 text-slate-500"></i> Indicador
             </button>
-            <hr class="my-2 border-slate-100">
-            <button onclick="switchTab('configuracoes'); toggleSidebar();" class="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition">
-                <i class="fa-solid fa-gear text-slate-600 w-5"></i>
-                <span id="menu-lbl-config">Configurações</span>
+            <button onclick="switchTab('configuracao'); toggleMenu();" class="w-full text-left px-4 py-3 rounded-xl font-medium text-sm flex items-center gap-3 hover:bg-slate-100 transition menu-btn" data-tab="configuracao">
+                <i class="fa-solid fa-gears w-5 text-slate-500"></i> Configuração
             </button>
+        </nav>
+        <div class="p-4 border-t border-slate-200 text-xs text-slate-500 text-center">
+            PCP System &copy; 2026
         </div>
-        <div class="p-4 border-t border-slate-100 text-center text-xs text-slate-400">
-            Versão 3.4 - Firebase Sync
-        </div>
-    </div>
+    </aside>
 
-    <!-- Container em Tela Cheia Responsivo -->
-    <main class="flex-1 w-full px-3 sm:px-6 lg:px-8 py-6 space-y-6 overflow-y-auto">
-        
-        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden w-full">
-            <div class="p-4 sm:p-5 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4 flex-wrap">
-                <div id="searchContainer" class="flex items-center space-x-2 w-full sm:w-auto">
-                    <div class="relative w-full sm:w-80">
-                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
-                            <i class="fa-solid fa-search"></i>
-                        </span>
-                        <input type="text" id="searchInput" onkeyup="filterTable()" placeholder="Buscar por cliente, item ou descrição..." class="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-500 focus:bg-white transition">
+    <main class="flex-1 p-4 sm:p-6 max-w-7xl w-full mx-auto space-y-6">
+
+        <!-- Global Filter Toolbar -->
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col md:flex-row gap-4 items-center justify-between">
+            <div class="relative w-full md:w-96">
+                <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                </span>
+                <input type="text" id="global-search" oninput="renderCurrentTab()" placeholder="Pesquisar por cliente, item..." class="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-black">
+            </div>
+            <div class="flex flex-wrap gap-3 w-full md:w-auto items-center">
+                <div class="flex items-center gap-2">
+                    <label class="text-xs font-semibold text-slate-600 uppercase tracking-wider">Unidade:</label>
+                    <select id="filter-unidade" onchange="renderCurrentTab()" class="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-black">
+                        <option value="todos">Todas</option>
+                        <option value="MG1">MG1</option>
+                        <option value="MG4">MG4</option>
+                    </select>
+                </div>
+                <div class="flex items-center gap-2">
+                    <label class="text-xs font-semibold text-slate-600 uppercase tracking-wider">Status:</label>
+                    <select id="filter-status" onchange="renderCurrentTab()" class="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-black">
+                        <option value="todos">Todos</option>
+                        <option value="em analise">Em Análise</option>
+                        <option value="liberado">Liberado</option>
+                        <option value="bloqueado">Bloqueado</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 1: GERAL -->
+        <section id="tab-geral" class="tab-content space-y-4">
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="px-6 py-4 border-b border-slate-200 font-bold text-slate-800 flex justify-between items-center">
+                    <span>Lista Geral de Solicitações</span>
+                    <span id="geral-count" class="text-xs font-semibold bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full">0 itens</span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-sm">
+                        <thead>
+                            <tr class="bg-slate-100 text-slate-600 uppercase text-xs tracking-wider border-b border-slate-200">
+                                <th class="p-4">Cliente</th>
+                                <th class="p-4">Item</th>
+                                <th class="p-4">Descrição</th>
+                                <th class="p-4">Quantidade</th>
+                                <th class="p-4">Unidade</th>
+                                <th class="p-4">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-geral-body" class="divide-y divide-slate-100">
+                            <!-- Injected by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 2: EM ANÁLISE -->
+        <section id="tab-analise" class="tab-content hidden space-y-4">
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="px-6 py-4 border-b border-slate-200 font-bold text-slate-800 flex justify-between items-center">
+                    <span>Solicitações Em Análise</span>
+                    <span id="analise-count" class="text-xs font-semibold bg-amber-100 text-amber-800 px-2.5 py-1 rounded-full">0 itens</span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-sm">
+                        <thead>
+                            <tr class="bg-slate-100 text-slate-600 uppercase text-xs tracking-wider border-b border-slate-200">
+                                <th class="p-4">Cliente</th>
+                                <th class="p-4">Item</th>
+                                <th class="p-4">Descrição</th>
+                                <th class="p-4">Quantidade</th>
+                                <th class="p-4">Unidade</th>
+                                <th class="p-4">Status</th>
+                                <th class="p-4 text-center">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-analise-body" class="divide-y divide-slate-100">
+                            <!-- Injected by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 3: INDICADOR -->
+        <section id="tab-indicador" class="tab-content hidden space-y-6">
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+                    <div>
+                        <h2 class="font-bold text-slate-800 text-lg">Indicadores e Gráficos de Produção Mensal (kg)</h2>
+                        <p class="text-xs text-slate-500 mt-0.5">Selecione o mês para visualizar o desempenho e a lista de materiais correspondentes.</p>
                     </div>
-                </div>
-
-                <div id="filtersContainer" class="flex items-center space-x-3 w-full sm:w-auto justify-end flex-wrap gap-2">
-                    <select id="unitFilter" onchange="filterTable()" class="bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-500 transition">
-                        <option value="">Todas as Unidades</option>
-                        <option value="MG1">Unidade MG1</option>
-                        <option value="MG4">Unidade MG4</option>
-                    </select>
-
-                    <select id="statusFilter" onchange="filterTable()" class="bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-500 transition">
-                        <option value="">Todos os Status</option>
-                        <option value="Liberado">Liberado</option>
-                        <option value="Bloqueado">Bloqueado</option>
-                    </select>
-                </div>
-            </div>
-
-            <!-- Table Geral -->
-            <div id="container-geral" class="w-full overflow-x-auto">
-                <table class="w-full text-left border-collapse min-w-[700px]">
-                    <thead>
-                        <tr class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider border-b border-slate-100 font-semibold">
-                            <th class="py-3.5 px-4 sm:px-6">Item</th>
-                            <th class="py-3.5 px-4">Cliente</th>
-                            <th class="py-3.5 px-4">Unidade</th>
-                            <th class="py-3.5 px-4">Descrição</th>
-                            <th class="py-3.5 px-4">Quantidade (kg)</th>
-                            <th class="py-3.5 px-4">Tipo</th>
-                            <th class="py-3.5 px-4">Status</th>
-                            <th class="py-3.5 px-4 sm:px-6">Motivo (Bloqueio)</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tableBody" class="divide-y divide-slate-100 text-sm text-slate-700">
-                        <!-- Dynamic rows injected via JS -->
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- Table Em Análise -->
-            <div id="container-analise" class="w-full overflow-x-auto hidden">
-                <table class="w-full text-left border-collapse min-w-[700px]">
-                    <thead>
-                        <tr class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider border-b border-slate-100 font-semibold">
-                            <th class="py-3.5 px-4 sm:px-6">Item</th>
-                            <th class="py-3.5 px-4">Cliente</th>
-                            <th class="py-3.5 px-4">Unidade</th>
-                            <th class="py-3.5 px-4">Período</th>
-                            <th class="py-3.5 px-4">Descrição</th>
-                            <th class="py-3.5 px-4">Qtd (kg)</th>
-                            <th class="py-3.5 px-4 text-center">Tipo de Material</th>
-                            <th class="py-3.5 px-4 text-center sm:px-6">Status da Análise</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tableBodyAnalise" class="divide-y divide-slate-100 text-sm text-slate-700">
-                        <!-- Dynamic rows injected via JS -->
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- Container Indicadores / Gráficos Interativos -->
-            <div id="container-indicadores" class="hidden p-4 sm:p-6 space-y-6 w-full max-w-5xl mx-auto">
-                <div class="flex flex-col sm:flex-row justify-between items-center gap-4 mb-4">
-                    <h3 id="lbl-graf-titulo" class="text-lg font-bold text-slate-800"><i class="fa-solid fa-chart-pie mr-2 text-slate-700"></i>Dashboard de Indicadores e Gráficos</h3>
-                    
-                    <div class="flex items-center gap-2 flex-wrap">
-                        <select id="globalFilterAno" onchange="renderCharts()" class="bg-slate-50 border border-slate-200 text-slate-700 text-xs font-semibold rounded-xl px-3 py-2 focus:ring-2 focus:ring-slate-500">
-                            <!-- Preenchido via JS -->
-                        </select>
-                        <select id="globalFilterMes" onchange="renderCharts()" class="bg-slate-50 border border-slate-200 text-slate-700 text-xs font-semibold rounded-xl px-3 py-2 focus:ring-2 focus:ring-slate-500">
-                            <option value="TODOS">Todos os Meses</option>
-                            <option value="1">Janeiro</option>
-                            <option value="2">Fevereiro</option>
-                            <option value="3">Março</option>
-                            <option value="4">Abril</option>
-                            <option value="5">Maio</option>
-                            <option value="6">Junho</option>
-                            <option value="7">Julho</option>
-                            <option value="8">Agosto</option>
-                            <option value="9">Setembro</option>
+                    <div class="flex items-center gap-2">
+                        <label for="filter-mes" class="text-xs font-semibold text-slate-600 uppercase tracking-wider">Mês:</label>
+                        <select id="filter-mes" onchange="renderCurrentTab()" class="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-black">
+                            <option value="todos">Todos os Meses</option>
+                            <option value="01">Janeiro</option>
+                            <option value="02">Fevereiro</option>
+                            <option value="03">Março</option>
+                            <option value="04">Abril</option>
+                            <option value="05">Maio</option>
+                            <option value="06">Junho</option>
+                            <option value="07">Julho</option>
+                            <option value="08">Agosto</option>
+                            <option value="09">Setembro</option>
                             <option value="10">Outubro</option>
                             <option value="11">Novembro</option>
                             <option value="12">Dezembro</option>
                         </select>
-                        <button onclick="downloadPDF()" class="bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold px-3.5 py-2 rounded-xl shadow transition flex items-center gap-1.5">
-                            <i class="fa-solid fa-file-pdf"></i> PDF
-                        </button>
                     </div>
                 </div>
                 
-                <div id="pdfExportArea" class="flex flex-col space-y-6 bg-white p-4 rounded-2xl">
-                    <!-- 1. MG1: Liberados vs Bloqueados -->
-                    <div class="bg-slate-50 border border-slate-200 p-5 rounded-2xl shadow-sm space-y-3 cursor-pointer hover:border-slate-400 transition" onclick="openInteractiveModal('MG1', 'STATUS_PAIR')">
-                        <h4 id="lbl-graf-mg1" class="text-sm font-bold text-slate-700 flex justify-between items-center">
-                            <span>MG1: Liberados vs Bloqueados</span>
-                            <span class="text-xs text-indigo-600 font-normal"><i class="fa-solid fa-hand-pointer mr-1"></i>Clique para ver materiais</span>
-                        </h4>
-                        <div id="chart-mg1-lib-bloq" class="space-y-2 pt-2"></div>
-                    </div>
-
-                    <!-- 2. MG4: Liberados vs Bloqueados -->
-                    <div class="bg-slate-50 border border-slate-200 p-5 rounded-2xl shadow-sm space-y-3 cursor-pointer hover:border-slate-400 transition" onclick="openInteractiveModal('MG4', 'STATUS_PAIR')">
-                        <h4 id="lbl-graf-mg4" class="text-sm font-bold text-slate-700 flex justify-between items-center">
-                            <span>MG4: Liberados vs Bloqueados</span>
-                            <span class="text-xs text-indigo-600 font-normal"><i class="fa-solid fa-hand-pointer mr-1"></i>Clique para ver materiais</span>
-                        </h4>
-                        <div id="chart-mg4-lib-bloq" class="space-y-2 pt-2"></div>
-                    </div>
-
-                    <!-- 3. Tipos de Materiais -->
-                    <div class="bg-slate-50 border border-slate-200 p-5 rounded-2xl shadow-sm space-y-3">
-                        <h4 id="lbl-graf-tipos" class="text-sm font-bold text-slate-700">Tipos de Materiais (Clique na barra para ver clientes por segmento)</h4>
-                        <div id="chart-tipos" class="space-y-2 pt-2"></div>
-                    </div>
-
-                    <!-- 4. Total Geral Combinado -->
-                    <div class="bg-slate-50 border border-slate-200 p-5 rounded-2xl shadow-sm space-y-3 cursor-pointer hover:border-slate-400 transition" onclick="openInteractiveModal('TODAS', 'STATUS_PAIR')">
-                        <h4 id="lbl-graf-total" class="text-sm font-bold text-slate-700 flex justify-between items-center">
-                            <span>Total Geral Combinado (MG1 & MG4)</span>
-                            <span class="text-xs text-indigo-600 font-normal"><i class="fa-solid fa-hand-pointer mr-1"></i>Clique para ver materiais</span>
-                        </h4>
-                        <div id="chart-total-combinado" class="space-y-2 pt-2"></div>
-                    </div>
-
-                    <!-- 5. Clientes MG1 - Liberados -->
-                    <div class="bg-slate-50 border border-slate-200 p-5 rounded-2xl shadow-sm space-y-3">
-                        <h4 id="lbl-graf-cli-mg1-lib" class="text-sm font-bold text-slate-700 text-emerald-700">Clientes MG1 - Liberados</h4>
-                        <div id="chart-clientes-mg1-lib" class="space-y-2 pt-2 max-h-48 overflow-y-auto"></div>
-                    </div>
-
-                    <!-- 6. Clientes MG1 - Bloqueados -->
-                    <div class="bg-slate-50 border border-slate-200 p-5 rounded-2xl shadow-sm space-y-3">
-                        <h4 id="lbl-graf-cli-mg1-bloq" class="text-sm font-bold text-slate-700 text-rose-700">Clientes MG1 - Bloqueados</h4>
-                        <div id="chart-clientes-mg1-bloq" class="space-y-2 pt-2 max-h-48 overflow-y-auto"></div>
-                    </div>
-
-                    <!-- 7. Clientes MG4 - Liberados -->
-                    <div class="bg-slate-50 border border-slate-200 p-5 rounded-2xl shadow-sm space-y-3">
-                        <h4 id="lbl-graf-cli-mg4-lib" class="text-sm font-bold text-slate-700 text-emerald-700">Clientes MG4 - Liberados</h4>
-                        <div id="chart-clientes-mg4-lib" class="space-y-2 pt-2 max-h-48 overflow-y-auto"></div>
-                    </div>
-
-                    <!-- 8. Clientes MG4 - Bloqueados -->
-                    <div class="bg-slate-50 border border-slate-200 p-5 rounded-2xl shadow-sm space-y-3">
-                        <h4 id="lbl-graf-cli-mg4-bloq" class="text-sm font-bold text-slate-700 text-rose-700">Clientes MG4 - Bloqueados</h4>
-                        <div id="chart-clientes-mg4-bloq" class="space-y-2 pt-2 max-h-48 overflow-y-auto"></div>
-                    </div>
+                <div id="charts-container" class="space-y-8">
+                    <!-- Charts will be injected dynamically -->
                 </div>
             </div>
+        </section>
 
-            <!-- Container Configurações -->
-            <div id="container-configuracoes" class="hidden p-6 space-y-6 max-w-2xl mx-auto w-full">
-                <h3 class="text-lg font-bold text-slate-800 mb-2"><i class="fa-solid fa-gear mr-2 text-slate-700"></i>Configurações e Personalização</h3>
-                <p class="text-xs text-slate-500 mb-6">Edite abaixo os nomes exibidos nas abas, botões e títulos dos gráficos do sistema.</p>
-
-                <form onsubmit="saveCustomConfig(event)" class="space-y-4 bg-slate-50 p-6 rounded-2xl border border-slate-200">
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-600 mb-1 uppercase">Nome da Aba Geral</label>
-                            <input type="text" id="cfg-aba-geral" required class="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-slate-500">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-600 mb-1 uppercase">Nome da Aba Análise</label>
-                            <input type="text" id="cfg-aba-analise" required class="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-slate-500">
-                        </div>
+        <!-- TAB 4: CONFIGURAÇÃO -->
+        <section id="tab-configuracao" class="tab-content hidden space-y-6">
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-6">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-100 pb-4">
+                    <div>
+                        <h2 class="font-bold text-slate-800 text-lg">Configurações e Gestão Completa</h2>
+                        <p class="text-xs text-slate-500 mt-0.5">Modifique todos os registros, edite a quantidade e status, exclua itens ou reinicie os dados.</p>
                     </div>
+                    <button onclick="resetData()" class="bg-red-50 hover:bg-red-100 text-red-700 text-xs sm:text-sm font-semibold px-4 py-2 rounded-lg transition border border-red-200 flex items-center gap-2">
+                        <i class="fa-solid fa-rotate-right"></i> Zerar dados e Recalcular
+                    </button>
+                </div>
 
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-600 mb-1 uppercase">Nome da Aba Indicadores</label>
-                            <input type="text" id="cfg-aba-indicadores" required class="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-slate-500">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-600 mb-1 uppercase">Botão Nova Análise</label>
-                            <input type="text" id="cfg-btn-nova" required class="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-slate-500">
-                        </div>
-                    </div>
-
-                    <div class="space-y-3">
-                        <label class="block text-xs font-bold text-slate-700 uppercase">Títulos dos Gráficos</label>
-                        <div>
-                            <label class="block text-xs text-slate-500 mb-1">Gráfico MG1 (Lib. vs Bloq.)</label>
-                            <input type="text" id="cfg-g-mg1" required class="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-slate-500">
-                        </div>
-                        <div>
-                            <label class="block text-xs text-slate-500 mb-1">Gráfico MG4 (Lib. vs Bloq.)</label>
-                            <input type="text" id="cfg-g-mg4" required class="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-slate-500">
-                        </div>
-                        <div>
-                            <label class="block text-xs text-slate-500 mb-1">Gráfico Tipos de Materiais</label>
-                            <input type="text" id="cfg-g-tipos" required class="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-slate-500">
-                        </div>
-                        <div>
-                            <label class="block text-xs text-slate-500 mb-1">Gráfico Total Geral Combinado</label>
-                            <input type="text" id="cfg-g-total" required class="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-slate-500">
-                        </div>
-                    </div>
-
-                    <div class="flex justify-end space-x-3 pt-4">
-                        <button type="submit" class="px-5 py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-medium text-sm rounded-xl shadow transition">Salvar Configurações</button>
-                    </div>
-                </form>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-sm">
+                        <thead>
+                            <tr class="bg-slate-100 text-slate-600 uppercase text-xs tracking-wider border-b border-slate-200">
+                                <th class="p-4">Cliente</th>
+                                <th class="p-4">Item</th>
+                                <th class="p-4">Descrição</th>
+                                <th class="p-4">Quantidade (kg)</th>
+                                <th class="p-4">Unidade</th>
+                                <th class="p-4">Status</th>
+                                <th class="p-4">Data</th>
+                                <th class="p-4 text-center">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-config-body" class="divide-y divide-slate-100">
+                            <!-- Injected by JS -->
+                        </tbody>
+                    </table>
+                </div>
             </div>
+        </section>
 
-            <div id="emptyState" class="hidden py-12 text-center text-slate-400">
-                <i class="fa-solid fa-folder-open text-4xl mb-3"></i>
-                <p>Nenhum registro encontrado.</p>
-            </div>
-        </div>
     </main>
 
-    <!-- Modal Interativo de Detalhes dos Gráficos -->
-    <div id="interactiveModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-2xl shadow-xl max-w-2xl w-full p-6 space-y-4 max-h-[80vh] overflow-y-auto">
-            <div class="flex justify-between items-center border-b pb-3">
-                <h4 id="interactiveModalTitle" class="text-base font-bold text-slate-800">Detalhes dos Materiais</h4>
-                <button onclick="closeInteractiveModal()" class="text-slate-400 hover:text-slate-600">
-                    <i class="fa-solid fa-xmark text-lg"></i>
-                </button>
+    <!-- Modal New / Edit -->
+    <div id="modal-new" class="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
+            <div class="px-6 py-4 bg-slate-100 border-b border-slate-200 flex justify-between items-center">
+                <h3 id="modal-title-text" class="font-bold text-slate-800 text-base">Nova Análise</h3>
+                <button onclick="closeNewModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
             </div>
-            <div id="interactiveModalContent" class="space-y-3">
-                <!-- Conteúdo injetado via JS -->
-            </div>
-            <div class="flex justify-end pt-2">
-                <button onclick="closeInteractiveModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold rounded-xl transition">Fechar</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal Nova Análise -->
-    <div id="requestModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full overflow-hidden transform transition-all">
-            <div class="px-6 py-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
-                <h3 class="text-base font-bold text-slate-800">Nova Análise de Material</h3>
-                <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
-                    <i class="fa-solid fa-xmark text-lg"></i>
-                </button>
-            </div>
-            <form id="requestForm" onsubmit="handleFormSubmit(event)" class="p-6 space-y-4">
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1 uppercase tracking-wide">Cliente</label>
-                        <input type="text" id="cliente" required placeholder="Ex: Indústrias ABC" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1 uppercase tracking-wide">Item (Código)</label>
-                        <input type="text" id="item" required placeholder="Ex: ITM-4029" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
-                    </div>
+            <form id="form-new" onsubmit="handleNewSubmit(event)" class="p-6 space-y-4">
+                <input type="hidden" id="edit-id">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Cliente</label>
+                    <input type="text" id="new-cliente" required placeholder="Ex: Indústria Alfa" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-black">
                 </div>
-
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Item</label>
+                    <input type="text" id="new-item" required placeholder="Ex: IT-101" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-black">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Descrição / Categoria</label>
+                    <select id="new-descricao" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-black">
+                        <option value="impresso">Impresso</option>
+                        <option value="liso">Liso</option>
+                        <option value="semiacabado">Semiacabado</option>
+                    </select>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1 uppercase tracking-wide">Unidade</label>
-                        <select id="unidade" required class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
+                        <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Quantidade (kg)</label>
+                        <input type="number" id="new-qtd" required min="1" step="0.1" placeholder="Ex: 1200" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-black">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Unidade (Fábrica)</label>
+                        <select id="new-unidade" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-black">
                             <option value="MG1">MG1</option>
                             <option value="MG4">MG4</option>
                         </select>
                     </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1 uppercase tracking-wide">Quantidade (kg)</label>
-                        <input type="number" id="quantidade" min="1" required placeholder="Ex: 50" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
-                    </div>
                 </div>
-
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1 uppercase tracking-wide">Mês</label>
-                        <select id="mes" required class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
-                            <option value="1">Janeiro</option>
-                            <option value="2">Fevereiro</option>
-                            <option value="3">Março</option>
-                            <option value="4">Abril</option>
-                            <option value="5">Maio</option>
-                            <option value="6">Junho</option>
-                            <option value="7">Julho</option>
-                            <option value="8">Agosto</option>
-                            <option value="9">Setembro</option>
-                            <option value="10">Outubro</option>
-                            <option value="11">Novembro</option>
-                            <option value="12">Dezembro</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1 uppercase tracking-wide">Ano</label>
-                        <select id="ano" required class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
-                            <!-- Preenchido via JS até 2100 -->
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1 uppercase tracking-wide">Tipo Material</label>
-                        <select id="tipoMaterial" required class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
-                            <option value="Semi-acabado">Semi-acabado</option>
-                            <option value="Impresso">Impresso</option>
-                            <option value="Liso">Liso</option>
-                        </select>
-                    </div>
-                </div>
-
                 <div>
-                    <label class="block text-xs font-semibold text-slate-600 mb-1 uppercase tracking-wide">Descrição</label>
-                    <input type="text" id="descricao" required placeholder="Ex: Válvula Inox" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
+                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Data</label>
+                    <input type="date" id="new-data" required class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-black">
                 </div>
-
-                <div class="flex justify-end space-x-3 pt-4 border-t border-slate-100">
-                    <button type="button" onclick="closeModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-xl transition">Cancelar</button>
-                    <button type="submit" class="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white text-sm font-medium rounded-xl shadow transition">Confirmar</button>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="closeNewModal()" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-sm font-semibold transition">Cancelar</button>
+                    <button type="submit" id="modal-submit-btn" class="px-4 py-2 bg-black hover:bg-neutral-800 text-white rounded-lg text-sm font-semibold transition">Salvar Análise</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Modal de Confirmação (Sim / Não) -->
-    <div id="confirmModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 text-center space-y-4">
-            <div class="w-12 h-12 rounded-full flex items-center justify-center mx-auto text-xl bg-amber-100 text-amber-600">
-                <i class="fa-solid fa-question"></i>
+    <!-- Modal Confirmation Action -->
+    <div id="modal-confirm" class="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden text-center p-6 space-y-4">
+            <div id="confirm-icon-box" class="w-12 h-12 rounded-full mx-auto flex items-center justify-center text-xl text-white font-bold">
+                <i class="fa-solid fa-triangle-exclamation"></i>
             </div>
-            <h4 id="confirmModalTitle" class="text-lg font-bold text-slate-800">Confirmação</h4>
-            <p id="confirmModalMessage" class="text-sm text-slate-600"></p>
-            <div class="flex space-x-3 pt-2">
-                <button onclick="closeConfirmModal(false)" class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium text-sm rounded-xl transition">Não</button>
-                <button onclick="closeConfirmModal(true)" class="flex-1 py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-medium text-sm rounded-xl transition">Sim</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal de Justificativa de Bloqueio -->
-    <div id="justificationModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4">
-            <div class="flex justify-between items-center border-b pb-3">
-                <h4 class="text-base font-bold text-slate-800">Justificativa de Bloqueio</h4>
-                <button onclick="closeJustificationModal(false)" class="text-slate-400 hover:text-slate-600">
-                    <i class="fa-solid fa-xmark text-lg"></i>
-                </button>
-            </div>
-            <p class="text-xs text-slate-500">Informe o motivo detalhado para bloquear este item:</p>
-            <textarea id="justificativaInput" rows="4" placeholder="Digite o motivo do bloqueio..." class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"></textarea>
-            <div class="flex justify-end space-x-3 pt-2">
-                <button type="button" onclick="closeJustificationModal(false)" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-xl transition">Cancelar</button>
-                <button type="button" onclick="closeJustificationModal(true)" class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-sm font-medium rounded-xl shadow transition">Confirmar Bloqueio</button>
+            <h3 id="confirm-title" class="font-bold text-slate-800 text-base">Confirmar Ação</h3>
+            <p id="confirm-text" class="text-xs text-slate-600">Deseja realmente confirmar esta ação para o item selecionado?</p>
+            <div class="flex justify-center gap-3 pt-2">
+                <button onclick="closeConfirmModal()" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-sm font-semibold transition">Cancelar</button>
+                <button id="confirm-action-btn" onclick="executePendingAction()" class="px-4 py-2 bg-black hover:bg-neutral-800 text-white rounded-lg text-sm font-semibold transition">Confirmar</button>
             </div>
         </div>
     </div>
 
-    <!-- Modal de Alerta Informativo -->
-    <div id="customModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 text-center space-y-4">
-            <div id="customModalIcon" class="w-12 h-12 rounded-full flex items-center justify-center mx-auto text-xl"></div>
-            <h4 id="customModalTitle" class="text-lg font-bold text-slate-800"></h4>
-            <p id="customModalMessage" class="text-sm text-slate-600"></p>
-            <button onclick="closeCustomModal()" class="w-full py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-medium text-sm rounded-xl transition">Entendido</button>
-        </div>
-    </div>
+    <!-- Firebase SDKs (Modular v10+) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js";
+        import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-    <script>
-        let currentTab = 'geral';
-        let pendingAction = null;
-        let requests = [];
-
-        let configNames = {
-            abaGeral: "Geral",
-            abaAnalise: "Em Análise",
-            abaIndicadores: "Indicadores",
-            btnNova: "Nova Análise",
-            gMg1: "MG1: Liberados vs Bloqueados",
-            gMg4: "MG4: Liberados vs Bloqueados",
-            gTipos: "Tipos de Materiais",
-            gTotal: "Total Geral Combinado (MG1 & MG4)"
+        const firebaseConfig = {
+            apiKey: "AIzaSyDjTM8Q88cm0EimzHje1pjqdEe0royr_eQ",
+            authDomain: "pcp-bloqueio.firebaseapp.com",
+            projectId: "pcp-bloqueio",
+            storageBucket: "pcp-bloqueio.firebasestorage.app",
+            messagingSenderId: "1095108223482",
+            appId: "1:1095108223482:web:91c9647da2d652ce62c443",
+            measurementId: "G-9LZMK2ER26"
         };
 
-        if (localStorage.getItem('unblock_config_v1')) {
-            try {
-                configNames = JSON.parse(localStorage.getItem('unblock_config_v1'));
-            } catch(e) {}
-        }
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const analytics = getAnalytics(app);
+        const db = getFirestore(app);
 
-        function setupRealtimeListener() {
-            if (!window.colRef || !window.onSnapshot) return;
-            window.onSnapshot(window.colRef, (snapshot) => {
-                const data = [];
-                snapshot.forEach(docSnap => {
-                    data.push({ firestoreId: docSnap.id, ...docSnap.data() });
-                });
-                
-                if (data.length === 0 && requests.length === 0) {
-                    const initial = [
-                        { docId: "doc_1001", id: "ITM-1001", cliente: "Metalúrgica Alpha", unidade: "MG1", descricao: "Chapa de Aço Carbono", quantidade: 120, mes: 9, ano: 2026, tipoMaterial: "Semi-acabado", statusAnalise: "Pendente", justificativaBloqueio: "" },
-                        { docId: "doc_1002", id: "ITM-1002", cliente: "Polímeros do Brasil", unidade: "MG4", descricao: "Granulado Polímero X", quantidade: 500, mes: 9, ano: 2026, tipoMaterial: "Liso", statusAnalise: "Liberado", justificativaBloqueio: "" }
-                    ];
-                    initial.forEach(item => saveToFirebase(item));
-                } else if (data.length > 0) {
-                    requests = data;
-                    renderApp();
+        const defaultData = [
+            { id: '1', cliente: 'Indústria Alfa', item: 'IT-101', descricao: 'impresso', quantidade: 1200, unidade: 'MG1', status: 'em analise', data: '2026-03-10' },
+            { id: '2', cliente: 'Comércio Beta', item: 'IT-102', descricao: 'liso', quantidade: 3500, unidade: 'MG4', status: 'em analise', data: '2026-03-12' },
+            { id: '3', cliente: 'Embalagens Gamma', item: 'IT-103', descricao: 'semiacabado', quantidade: 800, unidade: 'MG1', status: 'liberado', data: '2026-03-01' },
+            { id: '4', cliente: 'Serrana Log', item: 'IT-104', descricao: 'impresso', quantidade: 2100, unidade: 'MG4', status: 'bloqueado', data: '2026-02-15' },
+            { id: '5', cliente: 'Delta Ltda', item: 'IT-105', descricao: 'liso', quantidade: 1500, unidade: 'MG1', status: 'liberado', data: '2026-03-15' }
+        ];
+
+        let appData = [];
+        let activeTab = 'geral';
+        let pendingAction = { id: null, targetStatus: null };
+        let chartsInstances = {};
+
+        async function loadDataFromFirestore() {
+            try {
+                const querySnapshot = await getDocs(collection(db, "solicitacoes"));
+                if (querySnapshot.empty) {
+                    // Se o banco estiver vazio, popula com os dados padrões
+                    for (let item of defaultData) {
+                        await setDoc(doc(db, "solicitacoes", item.id), item);
+                    }
+                    appData = [...defaultData];
+                } else {
+                    appData = [];
+                    querySnapshot.forEach((docSnap) => {
+                        appData.push({ firebaseId: docSnap.id, ...docSnap.data() });
+                    });
                 }
-            }, (error) => {
-                console.error("Firestore snapshot error:", error);
-            });
+            } catch (error) {
+                console.error("Erro ao carregar do Firestore, usando fallback local:", error);
+                appData = JSON.parse(localStorage.getItem('pcp_material_data')) || defaultData;
+            }
+            renderCurrentTab();
         }
 
-        async function saveToFirebase(item) {
-            if (!window.colRef || !window.setDoc || !window.doc) return;
-            try {
-                const targetDocId = item.docId || 'DOC_' + Date.now() + '_' + Math.floor(Math.random()*1000);
-                item.docId = targetDocId;
-                await window.setDoc(window.doc(window.colRef, targetDocId), item);
-            } catch (e) {
-                console.error("Error saving to firebase:", e);
-                showCustomModal("Aviso de Conexão", "Não foi possível salvar na nuvem. Verifique sua conexão.", "error");
-            }
+        window.saveStore = async function() {
+            // Mantém backup local também
+            localStorage.setItem('pcp_material_data', JSON.stringify(appData));
+            renderCurrentTab();
         }
 
-        function populateAnosSelect() {
-            const selectAno = document.getElementById('ano');
-            const globalAno = document.getElementById('globalFilterAno');
-            if (!selectAno || !globalAno) return;
-            
-            let anosOptions = '<option value="TODOS">Todos os Anos</option>';
-            let modalAnos = '';
-            
-            for (let y = 2026; y <= 2100; y++) {
-                anosOptions += `<option value="${y}">${y}</option>`;
-                modalAnos += `<option value="${y}" ${y === 2026 ? 'selected' : ''}>${y}</option>`;
-            }
-
-            if (globalAno.options.length <= 1) {
-                globalAno.innerHTML = anosOptions;
-                selectAno.innerHTML = modalAnos;
-            }
-        }
-
-        function toggleSidebar() {
-            const sidebar = document.getElementById('sidebarMenu');
-            const overlay = document.getElementById('sidebarOverlay');
-            if (sidebar.classList.contains('-translate-x-full')) {
-                sidebar.classList.remove('-translate-x-full');
-                overlay.classList.remove('hidden');
-            } else {
-                sidebar.classList.add('-translate-x-full');
+        window.toggleMenu = function() {
+            const menu = document.getElementById('vertical-menu');
+            const overlay = document.getElementById('sidebar-overlay');
+            const isOpen = !menu.classList.contains('-translate-x-full');
+            if (isOpen) {
+                menu.classList.add('-translate-x-full');
                 overlay.classList.add('hidden');
+            } else {
+                menu.classList.remove('-translate-x-full');
+                overlay.classList.remove('hidden');
             }
         }
 
-        function applyConfigNames() {
-            const elMenuGeral = document.getElementById('menu-lbl-geral');
-            const elMenuAnalise = document.getElementById('menu-lbl-analise');
-            const elMenuIndicadores = document.getElementById('menu-lbl-indicadores');
-            const elBtnNova = document.getElementById('lbl-btn-nova-analise');
-            const elGMg1 = document.getElementById('lbl-graf-mg1');
-            const elGMg4 = document.getElementById('lbl-graf-mg4');
-            const elGTipos = document.getElementById('lbl-graf-tipos');
-            const elGTotal = document.getElementById('lbl-graf-total');
+        window.switchTab = function(tabId) {
+            activeTab = tabId;
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`tab-${tabId}`).classList.remove('hidden');
 
-            if (elMenuGeral) elMenuGeral.innerText = configNames.abaGeral;
-            if (elMenuAnalise) elMenuAnalise.innerText = configNames.abaAnalise;
-            if (elMenuIndicadores) elMenuIndicadores.innerText = configNames.abaIndicadores;
-            if (elBtnNova) elBtnNova.innerText = configNames.btnNova;
-
-            if (elGMg1) elGMg1.innerText = configNames.gMg1;
-            if (elGMg4) elGMg4.innerText = configNames.gMg4;
-            if (elGTipos) elGTipos.innerText = configNames.gTipos;
-            if (elGTotal) elGTotal.innerText = configNames.gTotal;
-
-            const cfgAbaGeral = document.getElementById('cfg-aba-geral');
-            const cfgAbaAnalise = document.getElementById('cfg-aba-analise');
-            const cfgAbaIndicadores = document.getElementById('cfg-aba-indicadores');
-            const cfgBtnNova = document.getElementById('cfg-btn-nova');
-            const cfgGMg1 = document.getElementById('cfg-g-mg1');
-            const cfgGMg4 = document.getElementById('cfg-g-mg4');
-            const cfgGTipos = document.getElementById('cfg-g-tipos');
-            const cfgGTotal = document.getElementById('cfg-g-total');
-
-            if (cfgAbaGeral) cfgAbaGeral.value = configNames.abaGeral;
-            if (cfgAbaAnalise) cfgAbaAnalise.value = configNames.abaAnalise;
-            if (cfgAbaIndicadores) cfgAbaIndicadores.value = configNames.abaIndicadores;
-            if (cfgBtnNova) cfgBtnNova.value = configNames.btnNova;
-            if (cfgGMg1) cfgGMg1.value = configNames.gMg1;
-            if (cfgGMg4) cfgGMg4.value = configNames.gMg4;
-            if (cfgGTipos) cfgGTipos.value = configNames.gTipos;
-            if (cfgGTotal) cfgGTotal.value = configNames.gTotal;
+            document.querySelectorAll('.menu-btn').forEach(btn => {
+                if(btn.getAttribute('data-tab') === tabId) {
+                    btn.classList.add('bg-slate-100', 'font-semibold');
+                } else {
+                    btn.classList.remove('bg-slate-100', 'font-semibold');
+                }
+            });
+            renderCurrentTab();
         }
 
-        function saveCustomConfig(e) {
-            e.preventDefault();
-            configNames.abaGeral = document.getElementById('cfg-aba-geral').value;
-            configNames.abaAnalise = document.getElementById('cfg-aba-analise').value;
-            configNames.abaIndicadores = document.getElementById('cfg-aba-indicadores').value;
-            configNames.btnNova = document.getElementById('cfg-btn-nova').value;
-            configNames.gMg1 = document.getElementById('cfg-g-mg1').value;
-            configNames.gMg4 = document.getElementById('cfg-g-mg4').value;
-            configNames.gTipos = document.getElementById('cfg-g-tipos').value;
-            configNames.gTotal = document.getElementById('cfg-g-total').value;
-
-            localStorage.setItem('unblock_config_v1', JSON.stringify(configNames));
-            applyConfigNames();
-            showCustomModal("Sucesso", "Configurações salvas com sucesso!", "success");
+        window.renderCurrentTab = function() {
+            if (activeTab === 'geral') renderGeral();
+            if (activeTab === 'analise') renderAnalise();
+            if (activeTab === 'indicador') renderIndicadores();
+            if (activeTab === 'configuracao') renderConfiguracao();
         }
 
-        function switchTab(tab) {
-            currentTab = tab;
-            const containerGeral = document.getElementById('container-geral');
-            const containerAnalise = document.getElementById('container-analise');
-            const containerIndicadores = document.getElementById('container-indicadores');
-            const containerConfig = document.getElementById('container-configuracoes');
-            
-            const searchContainer = document.getElementById('searchContainer');
-            const filtersContainer = document.getElementById('filtersContainer');
+        function getFilteredData() {
+            const search = document.getElementById('global-search').value.toLowerCase();
+            const unidade = document.getElementById('filter-unidade').value;
+            const status = document.getElementById('filter-status').value;
 
-            containerGeral.classList.add('hidden');
-            containerAnalise.classList.add('hidden');
-            containerIndicadores.classList.add('hidden');
-            containerConfig.classList.add('hidden');
-
-            if (tab === 'geral') {
-                containerGeral.classList.remove('hidden');
-                searchContainer.classList.remove('hidden');
-                filtersContainer.classList.remove('hidden');
-            } else if (tab === 'analise') {
-                containerAnalise.classList.remove('hidden');
-                searchContainer.classList.remove('hidden');
-                filtersContainer.classList.remove('hidden');
-            } else if (tab === 'indicadores') {
-                containerIndicadores.classList.remove('hidden');
-                searchContainer.classList.add('hidden');
-                filtersContainer.classList.add('hidden');
-                renderCharts();
-            } else if (tab === 'configuracoes') {
-                containerConfig.classList.remove('hidden');
-                searchContainer.classList.add('hidden');
-                filtersContainer.classList.add('hidden');
-            }
-            filterTable();
-        }
-
-        function renderApp() {
-            populateAnosSelect();
-            applyConfigNames();
-            filterTable();
-            if (currentTab === 'indicadores') {
-                renderCharts();
-            }
-        }
-
-        function getFilteredRequestsForCharts() {
-            const fAno = document.getElementById('globalFilterAno').value;
-            const fMes = document.getElementById('globalFilterMes').value;
-
-            return requests.filter(r => {
-                const matchAno = (fAno === 'TODOS' || String(r.ano) === String(fAno));
-                const matchMes = (fMes === 'TODOS' || String(r.mes) === String(fMes));
-                return matchAno && matchMes;
+            return appData.filter(item => {
+                const matchSearch = item.cliente.toLowerCase().includes(search) || item.item.toLowerCase().includes(search) || item.descricao.toLowerCase().includes(search);
+                const matchUnidade = unidade === 'todos' || item.unidade === unidade;
+                const matchStatus = status === 'todos' || item.status === status;
+                return matchSearch && matchUnidade && matchStatus;
             });
         }
 
-        function renderCharts() {
-            const dataFilt = getFilteredRequestsForCharts();
-
-            const mg1Lib = dataFilt.filter(r => r.unidade === 'MG1' && r.statusAnalise === 'Liberado').reduce((acc, r) => acc + r.quantidade, 0);
-            const mg1Bloq = dataFilt.filter(r => r.unidade === 'MG1' && r.statusAnalise === 'Bloqueado').reduce((acc, r) => acc + r.quantidade, 0);
-            document.getElementById('chart-mg1-lib-bloq').innerHTML = renderBarPair(mg1Lib, mg1Bloq, 'Liberados (kg)', 'Bloqueados (kg)');
-
-            const mg4Lib = dataFilt.filter(r => r.unidade === 'MG4' && r.statusAnalise === 'Liberado').reduce((acc, r) => acc + r.quantidade, 0);
-            const mg4Bloq = dataFilt.filter(r => r.unidade === 'MG4' && r.statusAnalise === 'Bloqueado').reduce((acc, r) => acc + r.quantidade, 0);
-            document.getElementById('chart-mg4-lib-bloq').innerHTML = renderBarPair(mg4Lib, mg4Bloq, 'Liberados (kg)', 'Bloqueados (kg)');
-
-            const semi = dataFilt.filter(r => r.tipoMaterial === 'Semi-acabado').reduce((acc, r) => acc + r.quantidade, 0);
-            const impresso = dataFilt.filter(r => r.tipoMaterial === 'Impresso').reduce((acc, r) => acc + r.quantidade, 0);
-            const liso = dataFilt.filter(r => r.tipoMaterial === 'Liso').reduce((acc, r) => acc + r.quantidade, 0);
-            
-            document.getElementById('chart-tipos').innerHTML = `
-                <div onclick="openTipoModal('Semi-acabado')" class="cursor-pointer hover:bg-slate-100 p-2 rounded-xl transition">${renderSingleBarItem('Semi-acabado (kg)', semi, 'bg-slate-700')}</div>
-                <div onclick="openTipoModal('Impresso')" class="cursor-pointer hover:bg-slate-100 p-2 rounded-xl transition">${renderSingleBarItem('Impresso (kg)', impresso, 'bg-slate-500')}</div>
-                <div onclick="openTipoModal('Liso')" class="cursor-pointer hover:bg-slate-100 p-2 rounded-xl transition">${renderSingleBarItem('Liso (kg)', liso, 'bg-slate-400')}</div>
-            `;
-
-            const totalLib = mg1Lib + mg4Lib;
-            const totalBloq = mg1Bloq + mg4Bloq;
-            document.getElementById('chart-total-combinado').innerHTML = renderBarPair(totalLib, totalBloq, 'Total Liberados (MG1 & MG4 - kg)', 'Total Bloqueados (MG1 & MG4 - kg)', 'bg-emerald-500', 'bg-rose-500');
-
-            document.getElementById('chart-clientes-mg1-lib').innerHTML = renderClientSingleChart(dataFilt, 'MG1', 'Liberado');
-            document.getElementById('chart-clientes-mg1-bloq').innerHTML = renderClientSingleChart(dataFilt, 'MG1', 'Bloqueado');
-            document.getElementById('chart-clientes-mg4-lib').innerHTML = renderClientSingleChart(dataFilt, 'MG4', 'Liberado');
-            document.getElementById('chart-clientes-mg4-bloq').innerHTML = renderClientSingleChart(dataFilt, 'MG4', 'Bloqueado');
+        function renderStatusBadge(status) {
+            if (status === 'liberado') return `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-800">Liberado</span>`;
+            if (status === 'bloqueado') return `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-800">Bloqueado</span>`;
+            return `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">Em Análise</span>`;
         }
 
-        function renderBarPair(val1, val2, label1, label2, color1 = 'bg-emerald-500', color2 = 'bg-rose-500') {
-            const max = Math.max(val1, val2, 1);
-            const p1 = (val1 / max) * 100;
-            const p2 = (val2 / max) * 100;
+        function renderGeral() {
+            const tbody = document.getElementById('table-geral-body');
+            tbody.innerHTML = '';
+            const filtered = getFilteredData();
+            document.getElementById('geral-count').innerText = `${filtered.length} itens`;
 
-            return `
-                <div>
-                    <div class="flex justify-between text-xs font-semibold text-slate-600 mb-1">
-                        <span>${label1}</span><span>${val1} kg</span>
-                    </div>
-                    <div class="w-full bg-slate-200 h-3 rounded-full overflow-hidden">
-                        <div class="${color1} h-full rounded-full transition-all duration-500" style="width: ${p1}%"></div>
-                    </div>
-                </div>
-                <div>
-                    <div class="flex justify-between text-xs font-semibold text-slate-600 mb-1">
-                        <span>${label2}</span><span>${val2} kg</span>
-                    </div>
-                    <div class="w-full bg-slate-200 h-3 rounded-full overflow-hidden">
-                        <div class="${color2} h-full rounded-full transition-all duration-500" style="width: ${p2}%"></div>
-                    </div>
-                </div>
-            `;
-        }
-
-        function renderSingleBarItem(label, count, colorClass) {
-            const dataFilt = getFilteredRequestsForCharts();
-            const max = Math.max(...dataFilt.map(r => r.quantidade), 1);
-            const p = (count / max) * 100;
-            return `
-                <div class="flex justify-between text-xs font-semibold text-slate-600 mb-1">
-                    <span>${label} <i class="fa-solid fa-hand-pointer text-indigo-600 ml-1"></i></span><span>${count} kg</span>
-                </div>
-                <div class="w-full bg-slate-200 h-3 rounded-full overflow-hidden">
-                    <div class="${colorClass} h-full rounded-full transition-all duration-500" style="width: ${p}%"></div>
-                </div>
-            `;
-        }
-
-        function openInteractiveModal(unidadeFiltro, mode) {
-            const dataFilt = getFilteredRequestsForCharts();
-            let matched = [];
-            if (unidadeFiltro === 'TODAS') {
-                matched = dataFilt.filter(r => r.statusAnalise === 'Liberado' || r.statusAnalise === 'Bloqueado');
-            } else {
-                matched = dataFilt.filter(r => r.unidade === unidadeFiltro && (r.statusAnalise === 'Liberado' || r.statusAnalise === 'Bloqueado'));
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-slate-400">Nenhum registro encontrado.</td></tr>`;
+                return;
             }
 
-            const title = unidadeFiltro === 'TODAS' ? 'Materiais - Total Geral Combinado' : `Materiais - Unidade ${unidadeFiltro}`;
-            document.getElementById('interactiveModalTitle').innerText = title;
-
-            let html = '';
-            if (matched.length === 0) {
-                html = '<p class="text-sm text-slate-500 text-center py-4">Nenhum material encontrado para este filtro.</p>';
-            } else {
-                html = '<div class="space-y-2">';
-                matched.forEach(item => {
-                    const statusBadge = item.statusAnalise === 'Liberado' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700';
-                    html += `
-                        <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 flex justify-between items-center text-xs">
-                            <div>
-                                <span class="font-bold text-slate-800">${item.id}</span> - ${item.descricao} (${item.cliente})
-                                <div class="text-slate-500 mt-0.5">Unidade: ${item.unidade} | Tipo: ${item.tipoMaterial} | Qtd: ${item.quantidade} kg</div>
-                            </div>
-                            <span class="px-2 py-1 rounded-full font-semibold ${statusBadge}">${item.statusAnalise}</span>
-                        </div>
-                    `;
-                });
-                html += '</div>';
-            }
-
-            document.getElementById('interactiveModalContent').innerHTML = html;
-            document.getElementById('interactiveModal').classList.remove('hidden');
-            document.getElementById('interactiveModal').classList.add('flex');
-        }
-
-        function openTipoModal(tipoSeguimento) {
-            const dataFilt = getFilteredRequestsForCharts();
-            const matched = dataFilt.filter(r => r.tipoMaterial === tipoSeguimento && (r.statusAnalise === 'Liberado' || r.statusAnalise === 'Bloqueado'));
-
-            document.getElementById('interactiveModalTitle').innerText = `Clientes por Segmento: ${tipoSeguimento}`;
-
-            let html = '';
-            if (matched.length === 0) {
-                html = '<p class="text-sm text-slate-500 text-center py-4">Nenhum cliente encontrado para este segmento no período.</p>';
-            } else {
-                const clientMap = {};
-                matched.forEach(r => {
-                    if (!clientMap[r.cliente]) clientMap[r.cliente] = { liberado: 0, bloqueado: 0 };
-                    if (r.statusAnalise === 'Liberado') clientMap[r.cliente].liberado += r.quantidade;
-                    if (r.statusAnalise === 'Bloqueado') clientMap[r.cliente].bloqueado += r.quantidade;
-                });
-
-                html = '<div class="space-y-2">';
-                Object.keys(clientMap).forEach(cli => {
-                    const d = clientMap[cli];
-                    html += `
-                        <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 flex justify-between items-center text-xs">
-                            <span class="font-bold text-slate-800">${cli}</span>
-                            <div class="space-x-2">
-                                <span class="px-2 py-1 rounded-full bg-emerald-100 text-emerald-700 font-semibold">Liberado: ${d.liberado} kg</span>
-                                <span class="px-2 py-1 rounded-full bg-rose-100 text-rose-700 font-semibold">Bloqueado: ${d.bloqueado} kg</span>
-                            </div>
-                        </div>
-                    `;
-                });
-                html += '</div>';
-            }
-
-            document.getElementById('interactiveModalContent').innerHTML = html;
-            document.getElementById('interactiveModal').classList.remove('hidden');
-            document.getElementById('interactiveModal').classList.add('flex');
-        }
-
-        function closeInteractiveModal() {
-            document.getElementById('interactiveModal').classList.add('hidden');
-            document.getElementById('interactiveModal').classList.remove('flex');
-        }
-
-        function renderClientSingleChart(dataSet, unidade, statusFiltro) {
-            const clientMap = {};
-            dataSet.filter(r => r.unidade === unidade && r.statusAnalise === statusFiltro)
-                .forEach(r => {
-                    if (!clientMap[r.cliente]) clientMap[r.cliente] = 0;
-                    clientMap[r.cliente] += r.quantidade;
-                });
-
-            const clients = Object.keys(clientMap);
-            if (clients.length === 0) {
-                return '<p class="text-xs text-slate-400 text-center py-4">Nenhum registro.</p>';
-            }
-
-            const max = Math.max(...Object.values(clientMap), 1);
-            const barColor = statusFiltro === 'Liberado' ? 'bg-emerald-500' : 'bg-rose-500';
-
-            return clients.map(client => {
-                const count = clientMap[client];
-                const p = (count / max) * 100;
-                return `
-                    <div class="bg-white p-3 rounded-xl border border-slate-100 space-y-1">
-                        <div class="flex justify-between text-xs font-bold text-slate-700">
-                            <span class="truncate">${client}</span>
-                            <span>${count} kg</span>
-                        </div>
-                        <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                            <div class="${barColor} h-full rounded-full transition-all duration-500" style="width: ${p}%"></div>
-                        </div>
-                    </div>
+            filtered.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50 transition';
+                tr.innerHTML = `
+                    <td class="p-4 font-medium text-slate-900">${item.cliente}</td>
+                    <td class="p-4 text-slate-600">${item.item}</td>
+                    <td class="p-4 text-slate-600 capitalize">${item.descricao}</td>
+                    <td class="p-4 text-slate-600 font-semibold">${item.quantidade.toLocaleString()} kg</td>
+                    <td class="p-4 text-slate-600 font-medium">${item.unidade}</td>
+                    <td class="p-4">${renderStatusBadge(item.status)}</td>
                 `;
-            }).join('');
-        }
-
-        function downloadPDF() {
-            const element = document.getElementById('pdfExportArea');
-            const opt = {
-                margin:       10,
-                filename:     'indicadores_pcp.pdf',
-                image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2, useCORS: true },
-                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-            };
-            html2pdf().from(element).set(opt).save();
-        }
-
-        const nomesMeses = { 1: 'Janeiro', 2: 'Fevereiro', 3: 'Março', 4: 'Abril', 5: 'Maio', 6: 'Junho', 7: 'Julho', 8: 'Agosto', 9: 'Setembro', 10: 'Outubro', 11: 'Novembro', 12: 'Dezembro' };
-
-        function renderTable(dataToRender) {
-            const tbodyGeral = document.getElementById('tableBody');
-            const tbodyAnalise = document.getElementById('tableBodyAnalise');
-            const emptyState = document.getElementById('emptyState');
-            
-            tbodyGeral.innerHTML = '';
-            tbodyAnalise.innerHTML = '';
-
-            const dataGeral = dataToRender.filter(req => req.statusAnalise === 'Liberado' || req.statusAnalise === 'Bloqueado');
-            const dataAnalise = dataToRender.filter(req => req.statusAnalise === 'Pendente');
-
-            const activeList = currentTab === 'geral' ? dataGeral : (currentTab === 'analise' ? dataAnalise : []);
-
-            if (currentTab !== 'indicadores' && currentTab !== 'configuracoes' && activeList.length === 0) {
-                emptyState.classList.remove('hidden');
-            } else {
-                emptyState.classList.add('hidden');
-            }
-
-            dataGeral.forEach((req) => {
-                let badgeColor = req.statusAnalise === 'Liberado' 
-                    ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' 
-                    : 'bg-rose-100 text-rose-700 border border-rose-200';
-
-                let unitBadge = 'bg-slate-100 text-slate-700 border-slate-200';
-
-                const trGeral = document.createElement('tr');
-                trGeral.className = 'hover:bg-slate-50/80 transition';
-                trGeral.innerHTML = `
-                    <td class="py-3.5 px-4 sm:px-6 font-semibold text-slate-800">${req.id}</td>
-                    <td class="py-3.5 px-4 font-medium text-slate-800">${req.cliente}</td>
-                    <td class="py-3.5 px-4">
-                        <span class="px-2.5 py-1 rounded-lg text-xs font-bold border inline-block ${unitBadge}">${req.unidade}</span>
-                    </td>
-                    <td class="py-3.5 px-4 text-slate-700">${req.descricao}</td>
-                    <td class="py-3.5 px-4 font-semibold text-slate-700">${req.quantidade} kg</td>
-                    <td class="py-3.5 px-4 text-slate-600">${req.tipoMaterial}</td>
-                    <td class="py-3.5 px-4">
-                        <span class="px-2.5 py-1 rounded-full text-xs font-semibold inline-block ${badgeColor}">${req.statusAnalise}</span>
-                    </td>
-                    <td class="py-3.5 px-4 sm:px-6 text-slate-600 max-w-xs truncate" title="${req.statusAnalise === 'Bloqueado' ? req.justificativaBloqueio : ''}">
-                        ${req.statusAnalise === 'Bloqueado' ? (req.justificativaBloqueio || '-') : '-'}
-                    </td>
-                `;
-                tbodyGeral.appendChild(trGeral);
+                tbody.appendChild(tr);
             });
+        }
 
-            dataAnalise.forEach((req) => {
-                let unitBadge = 'bg-slate-100 text-slate-700 border-slate-200';
-                let statusAnaliseClass = 'bg-amber-100 text-amber-800 border-amber-300';
-                let periodoTxt = (nomesMeses[req.mes] || '') + '/' + req.ano;
+        function renderAnalise() {
+            const tbody = document.getElementById('table-analise-body');
+            tbody.innerHTML = '';
+            const filtered = getFilteredData().filter(i => i.status === 'em analise');
+            document.getElementById('analise-count').innerText = `${filtered.length} itens`;
 
-                const trAnalise = document.createElement('tr');
-                trAnalise.className = 'hover:bg-slate-50/80 transition';
-                trAnalise.innerHTML = `
-                    <td class="py-3.5 px-4 sm:px-6 font-semibold text-slate-800">${req.id}</td>
-                    <td class="py-3.5 px-4 font-medium text-slate-800">${req.cliente}</td>
-                    <td class="py-3.5 px-4">
-                        <span class="px-2.5 py-1 rounded-lg text-xs font-bold border inline-block ${unitBadge}">${req.unidade}</span>
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-slate-400">Nenhum item em análise no momento.</td></tr>`;
+                return;
+            }
+
+            filtered.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50 transition';
+                tr.innerHTML = `
+                    <td class="p-4 font-medium text-slate-900">${item.cliente}</td>
+                    <td class="p-4 text-slate-600">${item.item}</td>
+                    <td class="p-4 text-slate-600 capitalize">${item.descricao}</td>
+                    <td class="p-4 text-slate-600 font-semibold">${item.quantidade.toLocaleString()} kg</td>
+                    <td class="p-4 text-slate-600 font-medium">${item.unidade}</td>
+                    <td class="p-4">${renderStatusBadge(item.status)}</td>
+                    <td class="p-4 text-center space-x-2">
+                        <button onclick="promptConfirm('${item.id}', 'liberado')" class="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-semibold transition shadow-xs">Liberado</button>
+                        <button onclick="promptConfirm('${item.id}', 'bloqueado')" class="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-semibold transition shadow-xs">Bloqueado</button>
                     </td>
-                    <td class="py-3.5 px-4 text-xs font-medium text-slate-600">${periodoTxt}</td>
-                    <td class="py-3.5 px-4 text-slate-700">${req.descricao}</td>
-                    <td class="py-3.5 px-4 font-semibold text-slate-700">${req.quantidade} kg</td>
-                    <td class="py-3.5 px-4 text-center font-medium text-slate-700">${req.tipoMaterial}</td>
-                    <td class="py-3.5 px-4 text-center sm:px-6">
-                        <select onchange="handleStatusAnaliseChange('${req.docId || req.id}', this)" class="bg-slate-50 border text-xs font-bold rounded-xl px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-slate-500 transition ${statusAnaliseClass}">
-                            <option value="Pendente" ${req.statusAnalise === 'Pendente' ? 'selected' : ''}>Pendente (Aguardando)</option>
-                            <option value="Liberado" ${req.statusAnalise === 'Liberado' ? 'selected' : ''}>Liberado</option>
-                            <option value="Bloqueado" ${req.statusAnalise === 'Bloqueado' ? 'selected' : ''}>Bloqueado</option>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        window.promptConfirm = function(id, targetStatus) {
+            pendingAction = { id, targetStatus };
+            const modal = document.getElementById('modal-confirm');
+            const iconBox = document.getElementById('confirm-icon-box');
+            const title = document.getElementById('confirm-title');
+            const text = document.getElementById('confirm-text');
+            const actionBtn = document.getElementById('confirm-action-btn');
+
+            if (targetStatus === 'liberado') {
+                iconBox.className = 'w-12 h-12 rounded-full mx-auto flex items-center justify-center text-xl text-white font-bold bg-green-600';
+                title.innerText = 'Confirmar Liberação';
+                text.innerText = 'Deseja liberar este material? Ele sairá da aba Em Análise e constará como Liberado na aba Geral.';
+                actionBtn.className = 'px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-semibold transition';
+            } else {
+                iconBox.className = 'w-12 h-12 rounded-full mx-auto flex items-center justify-center text-xl text-white font-bold bg-red-600';
+                title.innerText = 'Confirmar Bloqueio';
+                text.innerText = 'Deseja bloquear/cancelar este material? Ele sairá da aba Em Análise e constará como Bloqueado na aba Geral.';
+                actionBtn.className = 'px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-semibold transition';
+            }
+            modal.classList.remove('hidden');
+        }
+
+        window.closeConfirmModal = function() {
+            document.getElementById('modal-confirm').classList.add('hidden');
+            pendingAction = { id: null, targetStatus: null };
+        }
+
+        window.executePendingAction = async function() {
+            if (!pendingAction.id) return;
+            const item = appData.find(i => i.id == pendingAction.id);
+            if (item) {
+                item.status = pendingAction.targetStatus;
+                try {
+                    await updateDoc(doc(db, "solicitacoes", String(item.id)), { status: item.status });
+                } catch (e) {
+                    console.error("Erro ao atualizar no Firestore:", e);
+                }
+            }
+            closeConfirmModal();
+            saveStore();
+        }
+
+        function renderConfiguracao() {
+            const tbody = document.getElementById('table-config-body');
+            tbody.innerHTML = '';
+            const filtered = getFilteredData();
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" class="p-6 text-center text-slate-400">Nenhum registro encontrado.</td></tr>`;
+                return;
+            }
+
+            filtered.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50 transition';
+                tr.innerHTML = `
+                    <td class="p-4 font-medium text-slate-900">${item.cliente}</td>
+                    <td class="p-4 text-slate-600">${item.item}</td>
+                    <td class="p-4 text-slate-600 capitalize">${item.descricao}</td>
+                    <td class="p-4 text-slate-600 font-semibold">${item.quantidade.toLocaleString()} kg</td>
+                    <td class="p-4 text-slate-600 font-medium">${item.unidade}</td>
+                    <td class="p-4">
+                        <select onchange="updateItemStatus('${item.id}', this.value)" class="px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold focus:outline-none">
+                            <option value="em analise" ${item.status === 'em analise' ? 'selected' : ''}>Em Análise</option>
+                            <option value="liberado" ${item.status === 'liberado' ? 'selected' : ''}>Liberado</option>
+                            <option value="bloqueado" ${item.status === 'bloqueado' ? 'selected' : ''}>Bloqueado</option>
                         </select>
                     </td>
+                    <td class="p-4 text-slate-500 text-xs">${item.data || 'N/D'}</td>
+                    <td class="p-4 text-center space-x-2">
+                        <button onclick="openEditModal('${item.id}')" class="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition" title="Editar"><i class="fa-solid fa-pencil text-xs"></i></button>
+                        <button onclick="deleteItem('${item.id}')" class="p-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition" title="Excluir"><i class="fa-solid fa-trash text-xs"></i></button>
+                    </td>
                 `;
-                tbodyAnalise.appendChild(trAnalise);
+                tbody.appendChild(tr);
             });
         }
 
-        function handleStatusAnaliseChange(key, selectElement) {
-            const novoStatus = selectElement.value;
-            const req = requests.find(r => (r.docId === key || r.id === key));
-            if (!req) return;
-
-            if (novoStatus === 'Bloqueado') {
-                pendingAction = { key, novoStatus, selectElement };
-                document.getElementById('justificativaInput').value = req.justificativaBloqueio || '';
-                document.getElementById('justificationModal').classList.remove('hidden');
-                document.getElementById('justificationModal').classList.add('flex');
-            } else if (novoStatus === 'Liberado') {
-                pendingAction = { key, novoStatus, selectElement };
-                document.getElementById('confirmModalTitle').innerText = "Confirmar Liberação";
-                document.getElementById('confirmModalMessage').innerText = `Deseja realmente liberar o item ${req.id}?`;
-                document.getElementById('confirmModal').classList.remove('hidden');
-                document.getElementById('confirmModal').classList.add('flex');
+        window.updateItemStatus = async function(id, newStatus) {
+            const item = appData.find(i => i.id == id);
+            if (item) {
+                item.status = newStatus;
+                try {
+                    await updateDoc(doc(db, "solicitacoes", String(id)), { status: newStatus });
+                } catch(e) {
+                    console.error("Erro ao atualizar status:", e);
+                }
+                saveStore();
             }
         }
 
-        function closeConfirmModal(confirmed) {
-            const modal = document.getElementById('confirmModal');
-            modal.classList.add('hidden');
-            modal.classList.remove('flex');
-
-            if (confirmed && pendingAction) {
-                const req = requests.find(r => (r.docId === pendingAction.key || r.id === pendingAction.key));
-                if (req) {
-                    req.statusAnalise = pendingAction.novoStatus;
-                    req.justificativaBloqueio = '';
-                    saveToFirebase(req);
-                    renderApp();
-                    switchTab('geral');
-                    showCustomModal("Sucesso", "Item liberado e enviado para a aba geral com sucesso.", "success");
-                }
-            } else if (pendingAction) {
-                renderApp();
+        window.deleteItem = async function(id) {
+            appData = appData.filter(i => i.id != id);
+            try {
+                await deleteDoc(doc(db, "solicitacoes", String(id)));
+            } catch(e) {
+                console.error("Erro ao deletar documento:", e);
             }
-            pendingAction = null;
+            saveStore();
         }
 
-        function closeJustificationModal(confirmed) {
-            const modal = document.getElementById('justificationModal');
-            const justificativa = document.getElementById('justificativaInput').value.trim();
+        window.resetData = async function() {
+            appData = [...defaultData];
+            for (let item of defaultData) {
+                await setDoc(doc(db, "solicitacoes", String(item.id)), item);
+            }
+            saveStore();
+        }
 
-            if (confirmed) {
-                if (!justificativa) {
-                    alert("A justificativa é obrigatória para itens bloqueados!");
-                    return;
-                }
-                if (pendingAction) {
-                    const req = requests.find(r => (r.docId === pendingAction.key || r.id === pendingAction.key));
-                    if (req) {
-                        req.statusAnalise = pendingAction.novoStatus;
-                        req.justificativaBloqueio = justificativa;
-                        saveToFirebase(req);
-                        renderApp();
-                        switchTab('geral');
-                        showCustomModal("Sucesso", "Item bloqueado, com motivo registrado, e enviado para a aba geral.", "success");
+        window.openNewModal = function() {
+            document.getElementById('form-new').reset();
+            document.getElementById('edit-id').value = '';
+            document.getElementById('modal-title-text').innerText = 'Nova Análise';
+            document.getElementById('modal-submit-btn').innerText = 'Salvar Análise';
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('new-data').value = today;
+            document.getElementById('modal-new').classList.remove('hidden');
+        }
+
+        window.openEditModal = function(id) {
+            const item = appData.find(i => i.id == id);
+            if (!item) return;
+
+            document.getElementById('edit-id').value = item.id;
+            document.getElementById('new-cliente').value = item.cliente;
+            document.getElementById('new-item').value = item.item;
+            document.getElementById('new-descricao').value = item.descricao;
+            document.getElementById('new-qtd').value = item.quantidade;
+            document.getElementById('new-unidade').value = item.unidade;
+            document.getElementById('new-data').value = item.data || new Date().toISOString().split('T')[0];
+
+            document.getElementById('modal-title-text').innerText = 'Editar Registro';
+            document.getElementById('modal-submit-btn').innerText = 'Atualizar Registro';
+            document.getElementById('modal-new').classList.remove('hidden');
+        }
+
+        window.closeNewModal = function() {
+            document.getElementById('modal-new').classList.add('hidden');
+        }
+
+        window.handleNewSubmit = async function(e) {
+            e.preventDefault();
+            const editId = document.getElementById('edit-id').value;
+            const cliente = document.getElementById('new-cliente').value;
+            const item = document.getElementById('new-item').value;
+            const descricao = document.getElementById('new-descricao').value;
+            const quantidade = Number(document.getElementById('new-qtd').value);
+            const unidade = document.getElementById('new-unidade').value;
+            const dataReg = document.getElementById('new-data').value || new Date().toISOString().split('T')[0];
+
+            if (editId) {
+                const idx = appData.findIndex(i => i.id == editId);
+                if (idx !== -1) {
+                    appData[idx].cliente = cliente;
+                    appData[idx].item = item;
+                    appData[idx].descricao = descricao;
+                    appData[idx].quantidade = quantidade;
+                    appData[idx].unidade = unidade;
+                    appData[idx].data = dataReg;
+
+                    try {
+                        await updateDoc(doc(db, "solicitacoes", String(editId)), {
+                            cliente, item, descricao, quantidade, unidade, data: dataReg
+                        });
+                    } catch(err) {
+                        console.error("Erro ao atualizar registro:", err);
                     }
                 }
             } else {
-                renderApp();
+                const newId = String(Date.now());
+                const newItem = {
+                    id: newId,
+                    cliente,
+                    item,
+                    descricao,
+                    quantidade,
+                    unidade,
+                    status: 'em analise',
+                    data: dataReg
+                };
+                appData.push(newItem);
+                try {
+                    await setDoc(doc(db, "solicitacoes", newId), newItem);
+                } catch(err) {
+                    console.error("Erro ao salvar novo item:", err);
+                }
             }
 
-            modal.classList.add('hidden');
-            modal.classList.remove('flex');
-            pendingAction = null;
+            saveStore();
+            closeNewModal();
         }
 
-        function filterTable() {
-            const query = document.getElementById('searchInput').value.toLowerCase();
-            const statusFilter = document.getElementById('statusFilter').value;
-            const unitFilter = document.getElementById('unitFilter').value;
+        function renderIndicadores() {
+            const container = document.getElementById('charts-container');
+            container.innerHTML = '';
 
-            const filtered = requests.filter(req => {
-                const matchQuery = req.id.toLowerCase().includes(query) ||
-                                   req.cliente.toLowerCase().includes(query) ||
-                                   req.descricao.toLowerCase().includes(query) ||
-                                   req.tipoMaterial.toLowerCase().includes(query);
-                const matchStatus = statusFilter === '' || req.statusAnalise === statusFilter;
-                const matchUnit = unitFilter === '' || req.unidade === unitFilter;
-                return matchQuery && matchStatus && matchUnit;
+            const selectedMes = document.getElementById('filter-mes').value;
+
+            const configs = [
+                { id: 'chart-lib-mg1', title: 'Tudo Liberado - MG1 (Mensal)', filterFn: i => i.status === 'liberado' && i.unidade === 'MG1' },
+                { id: 'chart-lib-mg4', title: 'Tudo Liberado - MG4 (Mensal)', filterFn: i => i.status === 'liberado' && i.unidade === 'MG4' },
+                { id: 'chart-blo-mg1', title: 'Tudo Cancelado / Bloqueado - MG1 (Mensal)', filterFn: i => i.status === 'bloqueado' && i.unidade === 'MG1' },
+                { id: 'chart-blo-mg4', title: 'Tudo Cancelado / Bloqueado - MG4 (Mensal)', filterFn: i => i.status === 'bloqueado' && i.unidade === 'MG4' },
+                { id: 'chart-lib-imp', title: 'Consolidado Liberado - Impresso (Mensal)', filterFn: i => i.status === 'liberado' && i.descricao === 'impresso' },
+                { id: 'chart-lib-lis', title: 'Consolidado Liberado - Liso (Mensal)', filterFn: i => i.status === 'liberado' && i.descricao === 'liso' },
+                { id: 'chart-lib-sem', title: 'Consolidado Liberado - Semiacabado (Mensal)', filterFn: i => i.status === 'liberado' && i.descricao === 'semiacabado' },
+                { id: 'chart-blo-imp', title: 'Consolidado Cancelado / Bloqueado - Impresso (Mensal)', filterFn: i => i.status === 'bloqueado' && i.descricao === 'impresso' },
+                { id: 'chart-blo-lis', title: 'Consolidado Cancelado / Bloqueado - Liso (Mensal)', filterFn: i => i.status === 'bloqueado' && i.descricao === 'liso' },
+                { id: 'chart-blo-sem', title: 'Consolidado Cancelado / Bloqueado - Semiacabado (Mensal)', filterFn: i => i.status === 'bloqueado' && i.descricao === 'semiacabado' }
+            ];
+
+            chartsInstances = {};
+
+            configs.forEach((cfg) => {
+                const matchedItems = appData.filter(i => {
+                    const matchesBase = cfg.filterFn(i);
+                    if (!matchesBase) return false;
+                    if (selectedMes === 'todos') return true;
+                    if (!i.data) return false;
+                    const itemMes = i.data.split('-')[1];
+                    return itemMes === selectedMes;
+                });
+
+                const totalQty = matchedItems.reduce((acc, curr) => acc + curr.quantidade, 0);
+                
+                const card = document.createElement('div');
+                card.className = 'bg-slate-50 border border-slate-200 rounded-xl p-4 grid grid-cols-1 md:grid-cols-3 gap-4 items-center';
+                
+                const chartCol = document.createElement('div');
+                chartCol.className = 'h-48 relative flex items-center justify-center';
+                const canvas = document.createElement('canvas');
+                canvas.id = cfg.id;
+                chartCol.appendChild(canvas);
+
+                const infoCol = document.createElement('div');
+                infoCol.className = 'md:col-span-2 space-y-2';
+                infoCol.infoColHTML = '';
+                infoCol.innerHTML = `
+                    <h3 class="font-bold text-slate-800 text-sm border-b pb-1">${cfg.title}</h3>
+                    <p class="text-xs text-slate-500">Total acumulado: <span class="font-bold text-slate-700">${totalQty.toLocaleString()} kg</span></p>
+                    <div class="max-h-32 overflow-y-auto space-y-1 text-xs bg-white p-2 rounded-lg border border-slate-200">
+                        ${matchedItems.length === 0 ? '<span class="text-slate-400">Nenhum item nesta categoria para o período selecionado.</span>' : 
+                            matchedItems.map(m => `<div class="flex justify-between border-b border-slate-50 py-1"><span><b>${m.cliente}</b> (${m.item}) - <span class="text-slate-400">${m.data || 'N/D'}</span></span> <span class="font-semibold text-slate-600">${m.quantidade.toLocaleString()} kg</span></div>`).join('')
+                        }
+                    </div>
+                `;
+
+                card.appendChild(chartCol);
+                card.appendChild(infoCol);
+                container.appendChild(card);
+
+                const ctx = canvas.getContext('2d');
+                chartsInstances[cfg.id] = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: matchedItems.length > 0 ? matchedItems.map(m => m.item) : ['Nenhum'],
+                        datasets: [{
+                            label: 'Quantidade (kg)',
+                            data: matchedItems.length > 0 ? matchedItems.map(m => m.quantidade) : [0],
+                            backgroundColor: '#000000',
+                            borderRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return ` Qtd: ${context.raw.toLocaleString()} kg`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: { font: { size: 10 } }
+                            },
+                            x: {
+                                ticks: { font: { size: 10 } }
+                            }
+                        }
+                    }
+                });
             });
-
-            renderTable(filtered);
         }
 
-        function openModal() {
-            document.getElementById('requestModal').classList.remove('hidden');
-            document.getElementById('requestModal').classList.add('flex');
-        }
-
-        function closeModal() {
-            document.getElementById('requestModal').classList.add('hidden');
-            document.getElementById('requestModal').classList.remove('flex');
-            document.getElementById('requestForm').reset();
-        }
-
-        function handleFormSubmit(e) {
-            e.preventDefault();
-            const cliente = document.getElementById('cliente').value;
-            const item = document.getElementById('item').value;
-            const unidade = document.getElementById('unidade').value;
-            const quantidade = parseFloat(document.getElementById('quantidade').value);
-            const descricao = document.getElementById('descricao').value;
-            const mes = parseInt(document.getElementById('mes').value);
-            const ano = parseInt(document.getElementById('ano').value);
-            const tipoMaterial = document.getElementById('tipoMaterial').value;
-
-            const targetDocId = 'DOC_' + Date.now() + '_' + Math.floor(Math.random()*1000);
-
-            const newReq = {
-                docId: targetDocId,
-                id: item,
-                cliente,
-                unidade,
-                descricao,
-                quantidade,
-                mes,
-                ano,
-                tipoMaterial,
-                statusAnalise: "Pendente",
-                justificativaBloqueio: ""
-            };
-
-            requests.unshift(newReq);
-            saveToFirebase(newReq);
-            renderApp();
-            closeModal();
-            switchTab('analise');
-            showCustomModal("Sucesso!", "Nova análise cadastrada e adicionada na aba Em Análise.", "success");
-        }
-
-        function showCustomModal(title, message, type) {
-            const modal = document.getElementById('customModal');
-            document.getElementById('customModalTitle').innerText = title;
-            document.getElementById('customModalMessage').innerText = message;
-            const iconDiv = document.getElementById('customModalIcon');
-            
-            if (type === 'success') {
-                iconDiv.className = "w-12 h-12 rounded-full flex items-center justify-center mx-auto text-xl bg-emerald-100 text-emerald-600";
-                iconDiv.innerHTML = '<i class="fa-solid fa-check"></i>';
-            } else if (type === 'error') {
-                iconDiv.className = "w-12 h-12 rounded-full flex items-center justify-center mx-auto text-xl bg-rose-100 text-rose-600";
-                iconDiv.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i>';
-            } else {
-                iconDiv.className = "w-12 h-12 rounded-full flex items-center justify-center mx-auto text-xl bg-slate-100 text-slate-700";
-                iconDiv.innerHTML = '<i class="fa-solid fa-info"></i>';
-            }
-
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
-        }
-
-        function closeCustomModal() {
-            document.getElementById('customModal').classList.add('hidden');
-            document.getElementById('customModal').classList.remove('flex');
-        }
+        window.onload = function() {
+            loadDataFromFirestore();
+        };
     </script>
 </body>
 </html>
