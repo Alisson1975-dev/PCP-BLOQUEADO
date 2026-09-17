@@ -179,10 +179,10 @@
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-100 pb-4">
                     <div>
                         <h2 class="font-bold text-slate-800 text-lg">Configurações e Gestão Completa</h2>
-                        <p class="text-xs text-slate-500 mt-0.5">Modifique registros, edite a quantidade, status ou reinicie os dados.</p>
+                        <p class="text-xs text-slate-500 mt-0.5">Modifique registros, edite a quantidade, status ou limpe os dados.</p>
                     </div>
                     <button onclick="resetData()" class="bg-red-50 hover:bg-red-100 text-red-700 text-xs sm:text-sm font-semibold px-4 py-2 rounded-lg transition border border-red-200 flex items-center gap-2 cursor-pointer">
-                        <i class="fa-solid fa-rotate-right"></i> Zerar dados e Recalcular
+                        <i class="fa-solid fa-rotate-right"></i> Limpar todos os dados
                     </button>
                 </div>
                 <div class="overflow-x-auto w-full">
@@ -289,14 +289,6 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        const defaultData = [
-            { cliente: 'Indústria Alfa', item: 'IT-101', descricao: 'impresso', quantidade: 1200, unidade: 'MG1', status: 'em analise', data: '2026-03-10' },
-            { cliente: 'Comércio Beta', item: 'IT-102', descricao: 'liso', quantidade: 3500, unidade: 'MG4', status: 'em analise', data: '2026-03-12' },
-            { cliente: 'Embalagens Gamma', item: 'IT-103', descricao: 'semiacabado', quantidade: 800, unidade: 'MG1', status: 'liberado', data: '2026-03-01' },
-            { cliente: 'Serrana Log', item: 'IT-104', descricao: 'impresso', quantidade: 2100, unidade: 'MG4', status: 'bloqueado', data: '2026-02-15' },
-            { cliente: 'Delta Ltda', item: 'IT-105', descricao: 'liso', quantidade: 1500, unidade: 'MG1', status: 'liberado', data: '2026-03-15' }
-        ];
-
         let appData = [];
         let activeTab = 'geral';
         let pendingAction = { id: null, targetStatus: null };
@@ -309,14 +301,6 @@
                 querySnapshot.forEach((docSnap) => {
                     appData.push({ id: docSnap.id, ...docSnap.data() });
                 });
-
-                if (appData.length === 0) {
-                    for (let item of defaultData) {
-                        await addDoc(collection(db, "solicitacoes"), item);
-                    }
-                    await loadStore();
-                    return;
-                }
             } catch (e) {
                 console.error("Erro ao carregar do Firebase:", e);
             }
@@ -543,15 +527,11 @@
         }
 
         window.resetData = async function() {
-            if(!confirm("Deseja reiniciar todos os dados para o padrão inicial?")) return;
+            if(!confirm("Deseja limpar todos os dados do banco? Essa ação não poderá ser desfeita.")) return;
             try {
                 const querySnapshot = await getDocs(collection(db, "solicitacoes"));
                 const deletes = querySnapshot.docs.map(d => deleteDoc(doc(db, "solicitacoes", d.id)));
                 await Promise.all(deletes);
-
-                for (let item of defaultData) {
-                    await addDoc(collection(db, "solicitacoes"), item);
-                }
                 await loadStore();
             } catch (e) {
                 console.error("Erro ao resetar dados:", e);
