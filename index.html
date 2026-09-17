@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>PCP - Solicitação de Liberação</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -14,53 +14,56 @@
         body { font-family: 'Inter', sans-serif; }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col w-full m-0 p-0">
 
-    <header class="bg-black text-white px-4 py-3 flex items-center justify-between shadow-md relative z-40">
+    <!-- Header -->
+    <header class="bg-black text-white px-4 py-3 flex items-center justify-between shadow-md relative z-40 w-full">
         <div class="flex items-center gap-3">
-            <button onclick="toggleMenu()" class="text-white hover:text-slate-300 focus:outline-none p-1">
+            <button onclick="toggleMenu()" class="text-white hover:text-slate-300 focus:outline-none p-1 cursor-pointer">
                 <i class="fa-solid fa-bars text-xl"></i>
             </button>
             <h1 class="font-bold text-lg tracking-wide">PCP - Solicitação de Liberação</h1>
         </div>
         <div>
-            <button onclick="openNewModal()" class="bg-white text-black hover:bg-slate-200 text-xs sm:text-sm font-semibold px-3 py-1.5 rounded-lg transition shadow-sm flex items-center gap-1.5">
+            <button onclick="openNewModal()" class="bg-emerald-600 text-white hover:bg-emerald-700 text-xs sm:text-sm font-semibold px-3 py-1.5 rounded-lg transition shadow-sm flex items-center gap-1.5 cursor-pointer">
                 <i class="fa-solid fa-plus text-xs"></i> Nova analise
             </button>
         </div>
     </header>
 
+    <!-- Sidebar Overlay & Vertical Menu -->
     <div id="sidebar-overlay" onclick="toggleMenu()" class="fixed inset-0 bg-black/40 z-40 hidden transition-opacity"></div>
     <aside id="vertical-menu" class="fixed top-0 left-0 bottom-0 w-72 bg-white shadow-2xl z-50 transform -translate-x-full transition-transform duration-300 flex flex-col">
         <div class="p-4 bg-black text-white flex justify-between items-center">
             <span class="font-bold text-base">Menu</span>
-            <button onclick="toggleMenu()" class="text-white hover:text-slate-300 focus:outline-none p-1">
+            <button onclick="toggleMenu()" class="text-white hover:text-slate-300 focus:outline-none p-1 cursor-pointer">
                 <i class="fa-solid fa-xmark text-lg"></i>
             </button>
         </div>
         <nav class="p-4 space-y-2 flex-1 overflow-y-auto">
-            <button onclick="switchTab('geral'); toggleMenu();" class="w-full text-left px-4 py-3 rounded-xl font-medium text-sm flex items-center gap-3 hover:bg-slate-100 transition menu-btn" data-tab="geral">
+            <button onclick="switchTab('geral')" class="w-full text-left px-4 py-3 rounded-xl font-medium text-sm flex items-center gap-3 hover:bg-slate-100 transition menu-btn cursor-pointer" data-tab="geral">
                 <i class="fa-solid fa-table-list w-5 text-slate-500"></i> Geral
             </button>
-            <button onclick="switchTab('analise'); toggleMenu();" class="w-full text-left px-4 py-3 rounded-xl font-medium text-sm flex items-center gap-3 hover:bg-slate-100 transition menu-btn" data-tab="analise">
+            <button onclick="switchTab('analise')" class="w-full text-left px-4 py-3 rounded-xl font-medium text-sm flex items-center gap-3 hover:bg-slate-100 transition menu-btn cursor-pointer" data-tab="analise">
                 <i class="fa-solid fa-clock-rotate-left w-5 text-slate-500"></i> Em Análise
             </button>
-            <button onclick="switchTab('indicador'); toggleMenu();" class="w-full text-left px-4 py-3 rounded-xl font-medium text-sm flex items-center gap-3 hover:bg-slate-100 transition menu-btn" data-tab="indicador">
+            <button onclick="switchTab('indicador')" class="w-full text-left px-4 py-3 rounded-xl font-medium text-sm flex items-center gap-3 hover:bg-slate-100 transition menu-btn cursor-pointer" data-tab="indicador">
                 <i class="fa-solid fa-chart-column w-5 text-slate-500"></i> Indicador
             </button>
-            <button onclick="switchTab('configuracao'); toggleMenu();" class="w-full text-left px-4 py-3 rounded-xl font-medium text-sm flex items-center gap-3 hover:bg-slate-100 transition menu-btn" data-tab="configuracao">
+            <button onclick="switchTab('configuracao')" class="w-full text-left px-4 py-3 rounded-xl font-medium text-sm flex items-center gap-3 hover:bg-slate-100 transition menu-btn cursor-pointer" data-tab="configuracao">
                 <i class="fa-solid fa-gears w-5 text-slate-500"></i> Configuração
             </button>
         </nav>
         <div class="p-4 border-t border-slate-200 text-xs text-slate-500 text-center">
-            PCP System &copy; 2026
+            PCP System &copy; 2026 (Firebase)
         </div>
     </aside>
 
-    <main class="flex-1 p-4 sm:p-6 max-w-7xl w-full mx-auto space-y-6">
+    <!-- Main Container -->
+    <main class="flex-1 p-4 sm:p-6 w-full max-w-full mx-auto space-y-6">
 
         <!-- Global Filter Toolbar -->
-        <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col md:flex-row gap-4 items-center justify-between">
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col md:flex-row gap-4 items-center justify-between w-full">
             <div class="relative w-full md:w-96">
                 <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
                     <i class="fa-solid fa-magnifying-glass"></i>
@@ -90,12 +93,12 @@
 
         <!-- TAB 1: GERAL -->
         <section id="tab-geral" class="tab-content space-y-4">
-            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden w-full">
                 <div class="px-6 py-4 border-b border-slate-200 font-bold text-slate-800 flex justify-between items-center">
                     <span>Lista Geral de Solicitações</span>
                     <span id="geral-count" class="text-xs font-semibold bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full">0 itens</span>
                 </div>
-                <div class="overflow-x-auto">
+                <div class="overflow-x-auto w-full">
                     <table class="w-full text-left border-collapse text-sm">
                         <thead>
                             <tr class="bg-slate-100 text-slate-600 uppercase text-xs tracking-wider border-b border-slate-200">
@@ -117,12 +120,12 @@
 
         <!-- TAB 2: EM ANÁLISE -->
         <section id="tab-analise" class="tab-content hidden space-y-4">
-            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden w-full">
                 <div class="px-6 py-4 border-b border-slate-200 font-bold text-slate-800 flex justify-between items-center">
                     <span>Solicitações Em Análise</span>
                     <span id="analise-count" class="text-xs font-semibold bg-amber-100 text-amber-800 px-2.5 py-1 rounded-full">0 itens</span>
                 </div>
-                <div class="overflow-x-auto">
+                <div class="overflow-x-auto w-full">
                     <table class="w-full text-left border-collapse text-sm">
                         <thead>
                             <tr class="bg-slate-100 text-slate-600 uppercase text-xs tracking-wider border-b border-slate-200">
@@ -145,7 +148,7 @@
 
         <!-- TAB 3: INDICADOR -->
         <section id="tab-indicador" class="tab-content hidden space-y-6">
-            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 w-full">
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
                     <div>
                         <h2 class="font-bold text-slate-800 text-lg">Indicadores e Gráficos de Produção Mensal (kg)</h2>
@@ -179,18 +182,18 @@
 
         <!-- TAB 4: CONFIGURAÇÃO -->
         <section id="tab-configuracao" class="tab-content hidden space-y-6">
-            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-6">
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-6 w-full">
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-100 pb-4">
                     <div>
                         <h2 class="font-bold text-slate-800 text-lg">Configurações e Gestão Completa</h2>
-                        <p class="text-xs text-slate-500 mt-0.5">Modifique todos os registros, edite a quantidade e status, exclua itens ou reinicie os dados.</p>
+                        <p class="text-xs text-slate-500 mt-0.5">Modifique todos os registros, edite a quantidade, status, exclua itens ou reinicie os dados.</p>
                     </div>
-                    <button onclick="resetData()" class="bg-red-50 hover:bg-red-100 text-red-700 text-xs sm:text-sm font-semibold px-4 py-2 rounded-lg transition border border-red-200 flex items-center gap-2">
+                    <button onclick="resetData()" class="bg-red-50 hover:bg-red-100 text-red-700 text-xs sm:text-sm font-semibold px-4 py-2 rounded-lg transition border border-red-200 flex items-center gap-2 cursor-pointer">
                         <i class="fa-solid fa-rotate-right"></i> Zerar dados e Recalcular
                     </button>
                 </div>
 
-                <div class="overflow-x-auto">
+                <div class="overflow-x-auto w-full">
                     <table class="w-full text-left border-collapse text-sm">
                         <thead>
                             <tr class="bg-slate-100 text-slate-600 uppercase text-xs tracking-wider border-b border-slate-200">
@@ -219,7 +222,7 @@
         <div class="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
             <div class="px-6 py-4 bg-slate-100 border-b border-slate-200 flex justify-between items-center">
                 <h3 id="modal-title-text" class="font-bold text-slate-800 text-base">Nova Análise</h3>
-                <button onclick="closeNewModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+                <button onclick="closeNewModal()" class="text-slate-400 hover:text-slate-600 cursor-pointer"><i class="fa-solid fa-xmark text-lg"></i></button>
             </div>
             <form id="form-new" onsubmit="handleNewSubmit(event)" class="p-6 space-y-4">
                 <input type="hidden" id="edit-id">
@@ -257,8 +260,8 @@
                     <input type="date" id="new-data" required class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-black">
                 </div>
                 <div class="flex justify-end gap-2 pt-2">
-                    <button type="button" onclick="closeNewModal()" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-sm font-semibold transition">Cancelar</button>
-                    <button type="submit" id="modal-submit-btn" class="px-4 py-2 bg-black hover:bg-neutral-800 text-white rounded-lg text-sm font-semibold transition">Salvar Análise</button>
+                    <button type="button" onclick="closeNewModal()" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-sm font-semibold transition cursor-pointer">Cancelar</button>
+                    <button type="submit" id="modal-submit-btn" class="px-4 py-2 bg-black hover:bg-neutral-800 text-white rounded-lg text-sm font-semibold transition cursor-pointer">Salvar Análise</button>
                 </div>
             </form>
         </div>
@@ -273,16 +276,15 @@
             <h3 id="confirm-title" class="font-bold text-slate-800 text-base">Confirmar Ação</h3>
             <p id="confirm-text" class="text-xs text-slate-600">Deseja realmente confirmar esta ação para o item selecionado?</p>
             <div class="flex justify-center gap-3 pt-2">
-                <button onclick="closeConfirmModal()" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-sm font-semibold transition">Cancelar</button>
-                <button id="confirm-action-btn" onclick="executePendingAction()" class="px-4 py-2 bg-black hover:bg-neutral-800 text-white rounded-lg text-sm font-semibold transition">Confirmar</button>
+                <button onclick="closeConfirmModal()" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-sm font-semibold transition cursor-pointer">Cancelar</button>
+                <button id="confirm-action-btn" onclick="executePendingAction()" class="px-4 py-2 bg-black hover:bg-neutral-800 text-white rounded-lg text-sm font-semibold transition cursor-pointer">Confirmar</button>
             </div>
         </div>
     </div>
 
-    <!-- Firebase SDKs (Modular v10+) -->
+    <!-- Script integrado com Firebase Firestore -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js";
         import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
@@ -295,17 +297,15 @@
             measurementId: "G-9LZMK2ER26"
         };
 
-        // Initialize Firebase
         const app = initializeApp(firebaseConfig);
-        const analytics = getAnalytics(app);
         const db = getFirestore(app);
 
         const defaultData = [
-            { id: '1', cliente: 'Indústria Alfa', item: 'IT-101', descricao: 'impresso', quantidade: 1200, unidade: 'MG1', status: 'em analise', data: '2026-03-10' },
-            { id: '2', cliente: 'Comércio Beta', item: 'IT-102', descricao: 'liso', quantidade: 3500, unidade: 'MG4', status: 'em analise', data: '2026-03-12' },
-            { id: '3', cliente: 'Embalagens Gamma', item: 'IT-103', descricao: 'semiacabado', quantidade: 800, unidade: 'MG1', status: 'liberado', data: '2026-03-01' },
-            { id: '4', cliente: 'Serrana Log', item: 'IT-104', descricao: 'impresso', quantidade: 2100, unidade: 'MG4', status: 'bloqueado', data: '2026-02-15' },
-            { id: '5', cliente: 'Delta Ltda', item: 'IT-105', descricao: 'liso', quantidade: 1500, unidade: 'MG1', status: 'liberado', data: '2026-03-15' }
+            { cliente: 'Indústria Alfa', item: 'IT-101', descricao: 'impresso', quantidade: 1200, unidade: 'MG1', status: 'em analise', data: '2026-03-10' },
+            { cliente: 'Comércio Beta', item: 'IT-102', descricao: 'liso', quantidade: 3500, unidade: 'MG4', status: 'em analise', data: '2026-03-12' },
+            { cliente: 'Embalagens Gamma', item: 'IT-103', descricao: 'semiacabado', quantidade: 800, unidade: 'MG1', status: 'liberado', data: '2026-03-01' },
+            { cliente: 'Serrana Log', item: 'IT-104', descricao: 'impresso', quantidade: 2100, unidade: 'MG4', status: 'bloqueado', data: '2026-02-15' },
+            { cliente: 'Delta Ltda', item: 'IT-105', descricao: 'liso', quantidade: 1500, unidade: 'MG1', status: 'liberado', data: '2026-03-15' }
         ];
 
         let appData = [];
@@ -313,31 +313,26 @@
         let pendingAction = { id: null, targetStatus: null };
         let chartsInstances = {};
 
-        async function loadDataFromFirestore() {
+        // Carregar dados do Firestore ao iniciar
+        async function loadStore() {
             try {
                 const querySnapshot = await getDocs(collection(db, "solicitacoes"));
-                if (querySnapshot.empty) {
-                    // Se o banco estiver vazio, popula com os dados padrões
-                    for (let item of defaultData) {
-                        await setDoc(doc(db, "solicitacoes", item.id), item);
-                    }
-                    appData = [...defaultData];
-                } else {
-                    appData = [];
-                    querySnapshot.forEach((docSnap) => {
-                        appData.push({ firebaseId: docSnap.id, ...docSnap.data() });
-                    });
-                }
-            } catch (error) {
-                console.error("Erro ao carregar do Firestore, usando fallback local:", error);
-                appData = JSON.parse(localStorage.getItem('pcp_material_data')) || defaultData;
-            }
-            renderCurrentTab();
-        }
+                appData = [];
+                querySnapshot.forEach((docSnap) => {
+                    appData.push({ id: docSnap.id, ...docSnap.data() });
+                });
 
-        window.saveStore = async function() {
-            // Mantém backup local também
-            localStorage.setItem('pcp_material_data', JSON.stringify(appData));
+                // Se o banco estiver vazio, popula com os dados padrão
+                if (appData.length === 0) {
+                    for (let item of defaultData) {
+                        await addDoc(collection(db, "solicitacoes"), item);
+                    }
+                    await loadStore(); // Recarrega com os IDs gerados pelo Firebase
+                    return;
+                }
+            } catch (e) {
+                console.error("Erro ao carregar do Firebase:", e);
+            }
             renderCurrentTab();
         }
 
@@ -356,8 +351,10 @@
 
         window.switchTab = function(tabId) {
             activeTab = tabId;
+            toggleMenu();
             document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-            document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+            const target = document.getElementById(`tab-${tabId}`);
+            if (target) target.classList.remove('hidden');
 
             document.querySelectorAll('.menu-btn').forEach(btn => {
                 if(btn.getAttribute('data-tab') === tabId) {
@@ -377,9 +374,13 @@
         }
 
         function getFilteredData() {
-            const search = document.getElementById('global-search').value.toLowerCase();
-            const unidade = document.getElementById('filter-unidade').value;
-            const status = document.getElementById('filter-status').value;
+            const searchEl = document.getElementById('global-search');
+            const unidadeEl = document.getElementById('filter-unidade');
+            const statusEl = document.getElementById('filter-status');
+
+            const search = searchEl ? searchEl.value.toLowerCase() : '';
+            const unidade = unidadeEl ? unidadeEl.value : 'todos';
+            const status = statusEl ? statusEl.value : 'todos';
 
             return appData.filter(item => {
                 const matchSearch = item.cliente.toLowerCase().includes(search) || item.item.toLowerCase().includes(search) || item.descricao.toLowerCase().includes(search);
@@ -397,9 +398,11 @@
 
         function renderGeral() {
             const tbody = document.getElementById('table-geral-body');
+            if (!tbody) return;
             tbody.innerHTML = '';
             const filtered = getFilteredData();
-            document.getElementById('geral-count').innerText = `${filtered.length} itens`;
+            const countEl = document.getElementById('geral-count');
+            if (countEl) countEl.innerText = `${filtered.length} itens`;
 
             if (filtered.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-slate-400">Nenhum registro encontrado.</td></tr>`;
@@ -423,9 +426,11 @@
 
         function renderAnalise() {
             const tbody = document.getElementById('table-analise-body');
+            if (!tbody) return;
             tbody.innerHTML = '';
             const filtered = getFilteredData().filter(i => i.status === 'em analise');
-            document.getElementById('analise-count').innerText = `${filtered.length} itens`;
+            const countEl = document.getElementById('analise-count');
+            if (countEl) countEl.innerText = `${filtered.length} itens`;
 
             if (filtered.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-slate-400">Nenhum item em análise no momento.</td></tr>`;
@@ -443,8 +448,8 @@
                     <td class="p-4 text-slate-600 font-medium">${item.unidade}</td>
                     <td class="p-4">${renderStatusBadge(item.status)}</td>
                     <td class="p-4 text-center space-x-2">
-                        <button onclick="promptConfirm('${item.id}', 'liberado')" class="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-semibold transition shadow-xs">Liberado</button>
-                        <button onclick="promptConfirm('${item.id}', 'bloqueado')" class="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-semibold transition shadow-xs">Bloqueado</button>
+                        <button onclick="promptConfirm('${item.id}', 'liberado')" class="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-semibold transition shadow-xs cursor-pointer">Liberado</button>
+                        <button onclick="promptConfirm('${item.id}', 'bloqueado')" class="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-semibold transition shadow-xs cursor-pointer">Bloqueado</button>
                     </td>
                 `;
                 tbody.appendChild(tr);
@@ -459,42 +464,43 @@
             const text = document.getElementById('confirm-text');
             const actionBtn = document.getElementById('confirm-action-btn');
 
+            if (!modal) return;
+
             if (targetStatus === 'liberado') {
                 iconBox.className = 'w-12 h-12 rounded-full mx-auto flex items-center justify-center text-xl text-white font-bold bg-green-600';
                 title.innerText = 'Confirmar Liberação';
                 text.innerText = 'Deseja liberar este material? Ele sairá da aba Em Análise e constará como Liberado na aba Geral.';
-                actionBtn.className = 'px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-semibold transition';
+                actionBtn.className = 'px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-semibold transition cursor-pointer';
             } else {
                 iconBox.className = 'w-12 h-12 rounded-full mx-auto flex items-center justify-center text-xl text-white font-bold bg-red-600';
                 title.innerText = 'Confirmar Bloqueio';
                 text.innerText = 'Deseja bloquear/cancelar este material? Ele sairá da aba Em Análise e constará como Bloqueado na aba Geral.';
-                actionBtn.className = 'px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-semibold transition';
+                actionBtn.className = 'px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-semibold transition cursor-pointer';
             }
             modal.classList.remove('hidden');
         }
 
         window.closeConfirmModal = function() {
-            document.getElementById('modal-confirm').classList.add('hidden');
+            const modal = document.getElementById('modal-confirm');
+            if (modal) modal.classList.add('hidden');
             pendingAction = { id: null, targetStatus: null };
         }
 
         window.executePendingAction = async function() {
             if (!pendingAction.id) return;
-            const item = appData.find(i => i.id == pendingAction.id);
-            if (item) {
-                item.status = pendingAction.targetStatus;
-                try {
-                    await updateDoc(doc(db, "solicitacoes", String(item.id)), { status: item.status });
-                } catch (e) {
-                    console.error("Erro ao atualizar no Firestore:", e);
-                }
+            try {
+                const docRef = doc(db, "solicitacoes", pendingAction.id);
+                await updateDoc(docRef, { status: pendingAction.targetStatus });
+                closeConfirmModal();
+                await loadStore();
+            } catch (e) {
+                console.error("Erro ao atualizar status:", e);
             }
-            closeConfirmModal();
-            saveStore();
         }
 
         function renderConfiguracao() {
             const tbody = document.getElementById('table-config-body');
+            if (!tbody) return;
             tbody.innerHTML = '';
             const filtered = getFilteredData();
 
@@ -521,8 +527,8 @@
                     </td>
                     <td class="p-4 text-slate-500 text-xs">${item.data || 'N/D'}</td>
                     <td class="p-4 text-center space-x-2">
-                        <button onclick="openEditModal('${item.id}')" class="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition" title="Editar"><i class="fa-solid fa-pencil text-xs"></i></button>
-                        <button onclick="deleteItem('${item.id}')" class="p-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition" title="Excluir"><i class="fa-solid fa-trash text-xs"></i></button>
+                        <button onclick="openEditModal('${item.id}')" class="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition cursor-pointer" title="Editar"><i class="fa-solid fa-pencil text-xs"></i></button>
+                        <button onclick="deleteItem('${item.id}')" class="p-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition cursor-pointer" title="Excluir"><i class="fa-solid fa-trash text-xs"></i></button>
                     </td>
                 `;
                 tbody.appendChild(tr);
@@ -530,65 +536,90 @@
         }
 
         window.updateItemStatus = async function(id, newStatus) {
-            const item = appData.find(i => i.id == id);
-            if (item) {
-                item.status = newStatus;
-                try {
-                    await updateDoc(doc(db, "solicitacoes", String(id)), { status: newStatus });
-                } catch(e) {
-                    console.error("Erro ao atualizar status:", e);
-                }
-                saveStore();
+            try {
+                const docRef = doc(db, "solicitacoes", id);
+                await updateDoc(docRef, { status: newStatus });
+                await loadStore();
+            } catch (e) {
+                console.error("Erro ao atualizar status:", e);
             }
         }
 
         window.deleteItem = async function(id) {
-            appData = appData.filter(i => i.id != id);
+            if(!confirm("Deseja realmente excluir este item?")) return;
             try {
-                await deleteDoc(doc(db, "solicitacoes", String(id)));
-            } catch(e) {
-                console.error("Erro ao deletar documento:", e);
+                await deleteDoc(doc(db, "solicitacoes", id));
+                await loadStore();
+            } catch (e) {
+                console.error("Erro ao excluir item:", e);
             }
-            saveStore();
         }
 
         window.resetData = async function() {
-            appData = [...defaultData];
-            for (let item of defaultData) {
-                await setDoc(doc(db, "solicitacoes", String(item.id)), item);
+            if(!confirm("Deseja reiniciar todos os dados para o padrão inicial?")) return;
+            try {
+                // Remove todos os registros atuais
+                const querySnapshot = await getDocs(collection(db, "solicitacoes"));
+                const deletes = querySnapshot.docs.map(d => deleteDoc(doc(db, "solicitacoes", d.id)));
+                await Promise.all(deletes);
+
+                // Insere os padrões
+                for (let item of defaultData) {
+                    await addDoc(collection(db, "solicitacoes"), item);
+                }
+                await loadStore();
+            } catch (e) {
+                console.error("Erro ao resetar dados:", e);
             }
-            saveStore();
         }
 
         window.openNewModal = function() {
-            document.getElementById('form-new').reset();
-            document.getElementById('edit-id').value = '';
-            document.getElementById('modal-title-text').innerText = 'Nova Análise';
-            document.getElementById('modal-submit-btn').innerText = 'Salvar Análise';
+            const form = document.getElementById('form-new');
+            if (form) form.reset();
+            const editId = document.getElementById('edit-id');
+            if (editId) editId.value = '';
+            const titleText = document.getElementById('modal-title-text');
+            if (titleText) titleText.innerText = 'Nova Análise';
+            const submitBtn = document.getElementById('modal-submit-btn');
+            if (submitBtn) submitBtn.innerText = 'Salvar Análise';
             const today = new Date().toISOString().split('T')[0];
-            document.getElementById('new-data').value = today;
-            document.getElementById('modal-new').classList.remove('hidden');
+            const dataInput = document.getElementById('new-data');
+            if (dataInput) dataInput.value = today;
+            const modalNew = document.getElementById('modal-new');
+            if (modalNew) modalNew.classList.remove('hidden');
         }
 
         window.openEditModal = function(id) {
-            const item = appData.find(i => i.id == id);
+            const item = appData.find(i => i.id === id);
             if (!item) return;
 
-            document.getElementById('edit-id').value = item.id;
-            document.getElementById('new-cliente').value = item.cliente;
-            document.getElementById('new-item').value = item.item;
-            document.getElementById('new-descricao').value = item.descricao;
-            document.getElementById('new-qtd').value = item.quantidade;
-            document.getElementById('new-unidade').value = item.unidade;
-            document.getElementById('new-data').value = item.data || new Date().toISOString().split('T')[0];
+            const editId = document.getElementById('edit-id');
+            const cliente = document.getElementById('new-cliente');
+            const itemIn = document.getElementById('new-item');
+            const descricao = document.getElementById('new-descricao');
+            const qtd = document.getElementById('new-qtd');
+            const unidade = document.getElementById('new-unidade');
+            const dataReg = document.getElementById('new-data');
 
-            document.getElementById('modal-title-text').innerText = 'Editar Registro';
-            document.getElementById('modal-submit-btn').innerText = 'Atualizar Registro';
-            document.getElementById('modal-new').classList.remove('hidden');
+            if (editId) editId.value = item.id;
+            if (cliente) cliente.value = item.cliente;
+            if (itemIn) itemIn.value = item.item;
+            if (descricao) descricao.value = item.descricao;
+            if (qtd) qtd.value = item.quantidade;
+            if (unidade) unidade.value = item.unidade;
+            if (dataReg) dataReg.value = item.data || new Date().toISOString().split('T')[0];
+
+            const titleText = document.getElementById('modal-title-text');
+            if (titleText) titleText.innerText = 'Editar Registro';
+            const submitBtn = document.getElementById('modal-submit-btn');
+            if (submitBtn) submitBtn.innerText = 'Atualizar Registro';
+            const modalNew = document.getElementById('modal-new');
+            if (modalNew) modalNew.classList.remove('hidden');
         }
 
         window.closeNewModal = function() {
-            document.getElementById('modal-new').classList.add('hidden');
+            const modal = document.getElementById('modal-new');
+            if (modal) modal.classList.add('hidden');
         }
 
         window.handleNewSubmit = async function(e) {
@@ -601,53 +632,37 @@
             const unidade = document.getElementById('new-unidade').value;
             const dataReg = document.getElementById('new-data').value || new Date().toISOString().split('T')[0];
 
-            if (editId) {
-                const idx = appData.findIndex(i => i.id == editId);
-                if (idx !== -1) {
-                    appData[idx].cliente = cliente;
-                    appData[idx].item = item;
-                    appData[idx].descricao = descricao;
-                    appData[idx].quantidade = quantidade;
-                    appData[idx].unidade = unidade;
-                    appData[idx].data = dataReg;
+            try {
+                if (editId) {
+                    const docRef = doc(db, "solicitacoes", editId);
+                    await updateDoc(docRef, { cliente, item, descricao, quantidade, unidade, data: dataReg });
+                } else {
+                    const newItem = {
+                        cliente,
+                        item,
+                        descricao,
+                        quantidade,
+                        unidade,
+                        status: 'em analise',
+                        data: dataReg
+                    };
+                    await addDoc(collection(db, "solicitacoes"), newItem);
+                }
 
-                    try {
-                        await updateDoc(doc(db, "solicitacoes", String(editId)), {
-                            cliente, item, descricao, quantidade, unidade, data: dataReg
-                        });
-                    } catch(err) {
-                        console.error("Erro ao atualizar registro:", err);
-                    }
-                }
-            } else {
-                const newId = String(Date.now());
-                const newItem = {
-                    id: newId,
-                    cliente,
-                    item,
-                    descricao,
-                    quantidade,
-                    unidade,
-                    status: 'em analise',
-                    data: dataReg
-                };
-                appData.push(newItem);
-                try {
-                    await setDoc(doc(db, "solicitacoes", newId), newItem);
-                } catch(err) {
-                    console.error("Erro ao salvar novo item:", err);
-                }
+                closeNewModal();
+                await loadStore();
+            } catch (e) {
+                console.error("Erro ao salvar dados no Firebase:", e);
             }
-
-            saveStore();
-            closeNewModal();
         }
 
         function renderIndicadores() {
             const container = document.getElementById('charts-container');
+            if (!container) return;
             container.innerHTML = '';
 
-            const selectedMes = document.getElementById('filter-mes').value;
+            const mesEl = document.getElementById('filter-mes');
+            const selectedMes = mesEl ? mesEl.value : 'todos';
 
             const configs = [
                 { id: 'chart-lib-mg1', title: 'Tudo Liberado - MG1 (Mensal)', filterFn: i => i.status === 'liberado' && i.unidade === 'MG1' },
@@ -677,23 +692,22 @@
                 const totalQty = matchedItems.reduce((acc, curr) => acc + curr.quantidade, 0);
                 
                 const card = document.createElement('div');
-                card.className = 'bg-slate-50 border border-slate-200 rounded-xl p-4 grid grid-cols-1 md:grid-cols-3 gap-4 items-center';
+                card.className = 'bg-slate-50 border border-slate-200 rounded-xl p-4 grid grid-cols-1 md:grid-cols-3 gap-4 items-center w-full';
                 
                 const chartCol = document.createElement('div');
-                chartCol.className = 'h-48 relative flex items-center justify-center';
+                chartCol.className = 'h-48 relative flex items-center justify-center w-full';
                 const canvas = document.createElement('canvas');
                 canvas.id = cfg.id;
                 chartCol.appendChild(canvas);
 
                 const infoCol = document.createElement('div');
                 infoCol.className = 'md:col-span-2 space-y-2';
-                infoCol.infoColHTML = '';
                 infoCol.innerHTML = `
                     <h3 class="font-bold text-slate-800 text-sm border-b pb-1">${cfg.title}</h3>
                     <p class="text-xs text-slate-500">Total acumulado: <span class="font-bold text-slate-700">${totalQty.toLocaleString()} kg</span></p>
                     <div class="max-h-32 overflow-y-auto space-y-1 text-xs bg-white p-2 rounded-lg border border-slate-200">
                         ${matchedItems.length === 0 ? '<span class="text-slate-400">Nenhum item nesta categoria para o período selecionado.</span>' : 
-                            matchedItems.map(m => `<div class="flex justify-between border-b border-slate-50 py-1"><span><b>${m.cliente}</b> (${m.item}) - <span class="text-slate-400">${m.data || 'N/D'}</span></span> <span class="font-semibold text-slate-600">${m.quantidade.toLocaleString()} kg</span></div>`).join('')
+                            matchedItems.map(m => `<div class="flex justify-between border-b border-slate-50 py-1"><span><b>${m.cliente}</b> (${m.item}) - <span class="text-slate-400">${m.data \vert{}\vert{} 'N/D'}</span></span> <span class="font-semibold text-slate-600">${m.quantidade.toLocaleString()} kg</span></div>`).join('')
                         }
                     </div>
                 `;
@@ -741,8 +755,9 @@
             });
         }
 
+        // Inicializa carregando dados do Firebase
         window.onload = function() {
-            loadDataFromFirestore();
+            loadStore();
         };
     </script>
 </body>
