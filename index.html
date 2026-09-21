@@ -618,10 +618,10 @@
             const selectedMes = mesEl ? mesEl.value : 'todos';
 
             const configs = [
-                { id: 'chart-lib-mg1', title: 'Tudo Liberado - MG1 (Mensal)', filterFn: i => i.status === 'liberado' && i.unidade === 'MG1' },
-                { id: 'chart-lib-mg4', title: 'Tudo Liberado - MG4 (Mensal)', filterFn: i => i.status === 'liberado' && i.unidade === 'MG4' },
-                { id: 'chart-blo-mg1', title: 'Tudo Cancelado / Bloqueado - MG1 (Mensal)', filterFn: i => i.status === 'bloqueado' && i.unidade === 'MG1' },
-                { id: 'chart-blo-mg4', title: 'Tudo Cancelado / Bloqueado - MG4 (Mensal)', filterFn: i => i.status === 'bloqueado' && i.unidade === 'MG4' }
+                { id: 'chart-lib-mg1', title: 'Liberado - MG1', filterFn: i => i.status === 'liberado' && i.unidade === 'MG1' },
+                { id: 'chart-lib-mg4', title: 'Liberado - MG4', filterFn: i => i.status === 'liberado' && i.unidade === 'MG4' },
+                { id: 'chart-blo-mg1', title: 'Bloqueado - MG1', filterFn: i => i.status === 'bloqueado' && i.unidade === 'MG1' },
+                { id: 'chart-blo-mg4', title: 'Bloqueado - MG4', filterFn: i => i.status === 'bloqueado' && i.unidade === 'MG4' }
             ];
 
             configs.forEach((cfg) => {
