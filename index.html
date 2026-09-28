@@ -350,7 +350,6 @@
                 });
 
                 if (appData.length === 0) {
-                    // Populate default data if empty
                     for (let item of defaultData) {
                         const { docId, ...dataWithoutDocId } = item;
                         const docRef = await addDoc(collection(db, "solicitacoes"), dataWithoutDocId);
@@ -450,7 +449,6 @@
                 if (val === '1975') {
                     window.closePasswordModal();
                     try {
-                        // Clear database and re-add defaults
                         for (let item of appData) {
                             if (item.docId) {
                                 await deleteDoc(doc(db, "solicitacoes", item.docId));
@@ -745,7 +743,6 @@
                             updatePayload.identificacao = customId;
                         }
                         await updateDoc(doc(db, "solicitacoes", editDocId), updatePayload);
-                        
                         appData[idx] = { ...appData[idx], ...updatePayload };
                     }
                 } else {
@@ -822,6 +819,9 @@
             chartConfigs.forEach((cfg, idx) => {
                 const matchedItems = filteredByDate.filter(cfg.filterFn);
                 
+                // Calcular a soma total das quantidades dos materiais filtrados para este gráfico
+                const totalQuantidade = matchedItems.reduce((acc, item) => acc + (Number(item.quantidade) || 0), 0);
+
                 const card = document.createElement('div');
                 card.className = 'grid grid-cols-1 lg:grid-cols-2 gap-4 p-4 bg-slate-50 border border-slate-200 rounded-xl items-center';
 
@@ -836,7 +836,7 @@
                         </div>
                     </div>
                     <div class="bg-white p-3 rounded-lg border border-slate-200 h-48 overflow-y-auto">
-                        <h4 class="text-xs font-bold text-slate-600 uppercase mb-2">Materiais (${matchedItems.length})</h4>
+                        <h4 class="text-xs font-bold text-slate-600 uppercase mb-2">Materiais (${totalQuantidade.toLocaleString()} kg)</h4>
                         <div id="${listId}" class="space-y-1.5"></div>
                     </div>
                 `;
