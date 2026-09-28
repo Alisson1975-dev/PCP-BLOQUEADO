@@ -807,16 +807,16 @@
             });
 
             const chartConfigs = [
-                { title: 'Tudo Liberado - MG1', filterFn: i => i.unidade === 'MG1' && i.status === 'liberado' },
-                { title: 'Tudo Cancelado / Bloqueado - MG1', filterFn: i => i.unidade === 'MG1' && i.status === 'bloqueado' },
-                { title: 'Tudo Liberado - MG4', filterFn: i => i.unidade === 'MG4' && i.status === 'liberado' },
-                { title: 'Tudo Cancelado / Bloqueado - MG4', filterFn: i => i.unidade === 'MG4' && i.status === 'bloqueado' },
-                { title: 'Tudo Liberado - Impresso', filterFn: i => i.descricao === 'impresso' && i.status === 'liberado' },
-                { title: 'Tudo Liberado - Liso', filterFn: i => i.descricao === 'liso' && i.status === 'liberado' },
-                { title: 'Tudo Liberado - Semiacabado', filterFn: i => i.descricao === 'semiacabado' && i.status === 'liberado' },
-                { title: 'Tudo Cancelado / Bloqueado - Impresso', filterFn: i => i.descricao === 'impresso' && i.status === 'bloqueado' },
-                { title: 'Tudo Cancelado / Bloqueado - Liso', filterFn: i => i.descricao === 'liso' && i.status === 'bloqueado' },
-                { title: 'Tudo Cancelado / Bloqueado - Semiacabado', filterFn: i => i.descricao === 'semiacabado' && i.status === 'bloqueado' }
+                { title: 'Liberado MG1 - Geral', filterFn: i => i.unidade === 'MG1' && i.status === 'liberado' },
+                { title: 'Bloqueado MG1 - Geral', filterFn: i => i.unidade === 'MG1' && i.status === 'bloqueado' },
+                { title: 'Liberado MG4 - Geral', filterFn: i => i.unidade === 'MG4' && i.status === 'liberado' },
+                { title: 'Bloqueado MG4 - Geral', filterFn: i => i.unidade === 'MG4' && i.status === 'bloqueado' },
+                { title: 'Liberado - Impresso', filterFn: i => i.descricao === 'impresso' && i.status === 'liberado' },
+                { title: 'Liberado - Liso', filterFn: i => i.descricao === 'liso' && i.status === 'liberado' },
+                { title: 'Liberado - Semiacabado', filterFn: i => i.descricao === 'semiacabado' && i.status === 'liberado' },
+                { title: 'Bloqueado - Impresso', filterFn: i => i.descricao === 'impresso' && i.status === 'bloqueado' },
+                { title: 'Bloqueado - Liso', filterFn: i => i.descricao === 'liso' && i.status === 'bloqueado' },
+                { title: 'Bloqueado - Semiacabado', filterFn: i => i.descricao === 'semiacabado' && i.status === 'bloqueado' }
             ];
 
             chartConfigs.forEach((cfg, idx) => {
